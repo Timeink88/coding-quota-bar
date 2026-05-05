@@ -150,7 +150,7 @@ function convertAccountData(
     usageRate: q.usageRate,
     resetAt: q.resetAt,
     startAt: (q as any).startAt,
-    color: getColorByPercent(100 - q.usageRate, thresholds) as 'green' | 'yellow' | 'red',
+    color: getColorByPercent(Math.max(0, 100 - q.usageRate), thresholds) as 'green' | 'yellow' | 'red',
     limitType: q.limitType,
     hideBar: (q as any).hideBar,
     currency: (q as any).currency,
