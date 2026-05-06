@@ -19,7 +19,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Line } from 'vue-chartjs'
 import {
@@ -45,7 +45,19 @@ const props = defineProps<{
 }>()
 
 type TabValue = '7d' | '15d' | '30d'
-const activeTab = ref<TabValue>('7d')
+
+const STORAGE_KEY = 'perf-chart-tab'
+const validTabs: TabValue[] = ['7d', '15d', '30d']
+function restoreTab(): TabValue {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY) as TabValue
+    if (validTabs.includes(saved)) return saved
+  } catch {}
+  return '7d'
+}
+
+const activeTab = ref<TabValue>(restoreTab())
+watch(activeTab, v => { try { localStorage.setItem(STORAGE_KEY, v) } catch {} })
 
 const tabs = [
   { label: t('main.tab7d'), value: '7d' as TabValue },

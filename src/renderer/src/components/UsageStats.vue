@@ -41,7 +41,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import TokenChart from './TokenChart.vue'
 import McpChart from './McpChart.vue'
@@ -62,8 +62,22 @@ const props = defineProps<{
 type ChartType = 'token' | 'mcp'
 type TabValue = 'today' | '24h' | '7d' | '30d'
 
-const activeChart = ref<ChartType>('token')
-const activeTab = ref<TabValue>('7d')
+const STORAGE_KEY_CHART = 'usage-stats-chart'
+const STORAGE_KEY_TAB = 'usage-stats-tab'
+
+function restore<V>(key: string, valid: V[], fallback: V): V {
+  try {
+    const saved = localStorage.getItem(key) as V
+    if (valid.includes(saved)) return saved
+  } catch {}
+  return fallback
+}
+
+const activeChart = ref<ChartType>(restore(STORAGE_KEY_CHART, ['token', 'mcp'], 'token'))
+const activeTab = ref<TabValue>(restore(STORAGE_KEY_TAB, ['today', '24h', '7d', '30d'], '7d'))
+
+watch(activeChart, v => { try { localStorage.setItem(STORAGE_KEY_CHART, v) } catch {} })
+watch(activeTab, v => { try { localStorage.setItem(STORAGE_KEY_TAB, v) } catch {} })
 
 const chartTypes = [
   { label: t('main.tabToken'), value: 'token' as ChartType },

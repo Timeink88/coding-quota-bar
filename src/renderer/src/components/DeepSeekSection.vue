@@ -72,11 +72,27 @@ const budget = ref<number | undefined>(undefined)
 
 // Month selector state
 const now = new Date()
-const selectedYear = ref(now.getFullYear())
-const selectedMonth = ref(now.getMonth() + 1)
+const STORAGE_KEY_MONTH = 'deepseek-selected-month'
+function restoreMonth(): { year: number; month: number } {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY_MONTH)
+    if (saved) {
+      const [y, m] = saved.split('-').map(Number)
+      if (y > 2020 && m >= 1 && m <= 12) return { year: y, month: m }
+    }
+  } catch {}
+  return { year: now.getFullYear(), month: now.getMonth() + 1 }
+}
+const restored = restoreMonth()
+const selectedYear = ref(restored.year)
+const selectedMonth = ref(restored.month)
 const monthRecords = ref<ModelTokenRecord[]>([])
 const monthCostRecords = ref<ModelCostRecord[]>([])
 const loading = ref(false)
+
+function saveSelectedMonth() {
+  try { localStorage.setItem(STORAGE_KEY_MONTH, `${selectedYear.value}-${selectedMonth.value}`) } catch {}
+}
 
 onMounted(async () => {
   const config = await window.electronAPI.getConfig()
@@ -86,8 +102,12 @@ onMounted(async () => {
       budget.value = (acc as any).budget
     }
   }
-  monthRecords.value = props.account.modelHistory30d
-  monthCostRecords.value = props.account.modelCostHistory30d
+  if (isCurrentMonth.value) {
+    monthRecords.value = props.account.modelHistory30d
+    monthCostRecords.value = props.account.modelCostHistory30d
+  } else {
+    await fetchMonthData()
+  }
 })
 
 const isCurrentMonth = computed(() => {
@@ -115,6 +135,7 @@ async function onMonthChange(e: Event) {
   const [y, m] = val.split('-').map(Number)
   selectedYear.value = y
   selectedMonth.value = m
+  saveSelectedMonth()
   await fetchMonthData()
 }
 
