@@ -355,6 +355,21 @@ export function generateMockData(): Record<string, UsageResult> {
           { label: '配额', used: 120000, total: 150000, usageRate: 80, resetAt: new Date(now + 7 * DAY).toISOString() }
         ]
       }
-    }
+    },
+
+    codex: {
+      used: 65,
+      total: 100,
+      expiresAt: new Date(now + 2 * HOUR).toISOString(),
+      level: 'Plus',
+      details: {
+        limitReached: false,
+        quotas: [
+          { label: 'quota.codexPrimaryWindow', used: 65, total: 100, usageRate: 65, resetAt: new Date(now + 2 * HOUR).toISOString(), limitType: 'codex' },
+          { label: 'quota.codexSecondaryWindow', used: 35, total: 100, usageRate: 35, resetAt: new Date(now + 18 * HOUR).toISOString(), limitType: 'codex' },
+          { label: 'quota.codexCredits', used: 12.50, total: 0, usageRate: 0, resetAt: '', hideBar: true, currency: 'USD', limitType: 'codex-credits' },
+        ],
+      },
+    },
   };
 }

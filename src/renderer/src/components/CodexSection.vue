@@ -5,15 +5,10 @@
     <span class="warning-text">{{ $t('quota.codexLimitReached') }}</span>
   </div>
 
-  <!-- 主窗口 + 次窗口 QuotaCard 并排 -->
-  <template v-for="(row, ri) in getQuotaRows(windowQuotas)" :key="ri">
-    <div v-if="row.length === 1" class="quota-row-single">
-      <QuotaCard v-bind="row[0]" />
-    </div>
-    <div v-else class="quota-row-pair">
-      <QuotaCard v-for="q in row" :key="q.label" v-bind="q" />
-    </div>
-  </template>
+  <!-- 主窗口 / 次窗口 QuotaCard 各占一行 -->
+  <div v-for="q in windowQuotas" :key="q.label" class="quota-row-single">
+    <QuotaCard v-bind="q" />
+  </div>
 
   <!-- 余额卡片 -->
   <div v-if="creditItem" class="credits-card">
@@ -25,7 +20,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import QuotaCard from './QuotaCard.vue'
-import type { AccountUsageData, QuotaItem } from '../types'
+import type { AccountUsageData } from '../types'
 
 const props = defineProps<{
   account: AccountUsageData
@@ -38,15 +33,6 @@ const windowQuotas = computed(() =>
 const creditItem = computed(() =>
   props.account.quotas.find(q => q.limitType === 'codex-credits')
 )
-
-function getQuotaRows(quotas: QuotaItem[]): QuotaItem[][] {
-  if (quotas.length <= 2) return [quotas]
-  const rows: QuotaItem[][] = []
-  for (let i = 0; i < quotas.length; i += 2) {
-    rows.push(quotas.slice(i, i + 2))
-  }
-  return rows
-}
 </script>
 
 <style scoped>
@@ -83,30 +69,6 @@ function getQuotaRows(quotas: QuotaItem[]): QuotaItem[][] {
 
 .quota-row-single {
   margin-bottom: 6px;
-}
-
-.quota-row-pair {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 6px;
-}
-
-.quota-row-pair :deep(.quota-card) {
-  flex: 1;
-  min-width: 0;
-  padding: 6px 8px;
-}
-
-.quota-row-pair :deep(.quota-label) {
-  font-size: 11px;
-}
-
-.quota-row-pair :deep(.quota-percent) {
-  font-size: 14px;
-}
-
-.quota-row-pair :deep(.reset-text) {
-  font-size: 9px;
 }
 
 .credits-card {
