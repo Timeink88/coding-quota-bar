@@ -54,6 +54,7 @@ export interface AccountDisplayData {
   performanceHistory30d: SharedPerformanceRecord[];
   serviceStatus?: import('../shared/types').DeepSeekServiceComponent[];
   balance?: { total: string; gift: string; cash: string; frozen: string; currency: string };
+  limitReached?: boolean;
 }
 
 /**
@@ -97,8 +98,8 @@ function hasEnabledProviders(): boolean {
     return Array.isArray(accounts) && accounts.some(a => {
       if (!a.enabled) return false;
       if (a.authMode === 'weblogin') {
-        // MiMo 使用 Cookie 认证，不需要 webToken
-        if (type === 'mimo') return true;
+        // MiMo 使用 Cookie 认证，Codex 读取本地 auth 文件，均不需要 webToken
+        if (type === 'mimo' || type === 'codex') return true;
         return !!a.webToken?.trim();
       }
       return !!a.apiKey?.trim();
@@ -206,6 +207,7 @@ function convertAccountData(
     performanceHistory30d: mapPerformanceHistory('performanceHistory30d'),
     serviceStatus: (result.details?.serviceStatus as import('../shared/types').DeepSeekServiceComponent[]) ?? undefined,
     balance: (result.details?.balance as { total: string; gift: string; cash: string; frozen: string; currency: string }) ?? undefined,
+    limitReached: (result.details?.limitReached as boolean) ?? undefined,
   };
 }
 

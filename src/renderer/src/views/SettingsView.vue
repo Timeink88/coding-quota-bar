@@ -53,8 +53,10 @@
               </button>
             </div>
 
-            <!-- DeepSeek 认证模式选择 -->
-            <template v-else>
+            <!-- Codex: 读取本地 auth 文件，无需凭证配置 -->
+
+            <!-- DeepSeek 认证模式选择（非 mimo / 非 codex） -->
+            <template v-else-if="info.key !== 'codex'">
               <div v-if="info.key === 'deepseek'" class="auth-mode-row">
                 <label class="mode-option" :class="{ active: account.authMode !== 'weblogin' }" :title="$t('settings.authModeApikeyHint')">
                   <input type="radio" :value="'apikey'" v-model="account.authMode" />
@@ -304,7 +306,7 @@ function addAccount(providerKey: string) {
     enabled: true,
     apiKey: '',
     showKey: false,
-    authMode: providerKey === 'mimo' ? 'weblogin' : 'apikey',
+    authMode: (providerKey === 'mimo' || providerKey === 'codex') ? 'weblogin' : 'apikey',
     webTokenStatus: 'none',
     apiKeyDirty: false,
   })
@@ -378,10 +380,12 @@ onMounted(async () => {
         apiKey: account.apiKey ?? '',
         showKey: false,
         budget: (account as any).budget ?? undefined,
-        authMode: key === 'mimo' ? (account.authMode ?? 'weblogin') : (account.authMode ?? 'apikey'),
+        authMode: (key === 'mimo' || key === 'codex') ? (account.authMode ?? 'weblogin') : (account.authMode ?? 'apikey'),
         webTokenStatus: key === 'mimo'
           ? ((account as any).mimoLoggedIn ? 'active' : 'none')
-          : (account.hasWebToken ? 'active' : 'none'),
+          : key === 'codex'
+            ? 'none'
+            : (account.hasWebToken ? 'active' : 'none'),
         apiKeyDirty: false,
       }))
     }

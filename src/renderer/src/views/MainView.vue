@@ -120,8 +120,11 @@
               <span class="error-icon">!</span>
               <span class="error-text">
                 <template v-if="getActiveAccount(activeProvider)!.error === 'TOKEN_EXPIRED'">
-                  {{ activeProvider.key === 'mimo' ? $t('main.mimoTokenExpired') : $t('main.deepseekTokenExpired') }}
-                  <button class="relogin-btn" @click="$emit('open-settings')">{{ $t('main.reloginBtn') }}</button>
+                  <template v-if="activeProvider.key === 'codex'">{{ $t('main.codexTokenExpired') }}</template>
+                  <template v-else>
+                    {{ activeProvider.key === 'mimo' ? $t('main.mimoTokenExpired') : $t('main.deepseekTokenExpired') }}
+                    <button class="relogin-btn" @click="$emit('open-settings')">{{ $t('main.reloginBtn') }}</button>
+                  </template>
                 </template>
                 <template v-else>{{ formatError(getActiveAccount(activeProvider)!.error!) }}</template>
               </span>
@@ -131,6 +134,7 @@
               <MiniMaxSection v-else-if="activeProvider.key === 'minimax'" :account="getActiveAccount(activeProvider)!" />
               <DeepSeekSection v-else-if="activeProvider.key === 'deepseek'" :account="getActiveAccount(activeProvider)!" />
               <MiMoSection v-else-if="activeProvider.key === 'mimo'" :account="getActiveAccount(activeProvider)!" />
+              <CodexSection v-else-if="activeProvider.key === 'codex'" :account="getActiveAccount(activeProvider)!" />
               <DeepSeekServiceStatus v-if="activeProvider.key === 'deepseek' && !getActiveAccount(activeProvider)!.error" :account="getActiveAccount(activeProvider)!" />
             </template>
           </template>
@@ -162,6 +166,7 @@ import MiniMaxSection from '../components/MiniMaxSection.vue'
 import DeepSeekSection from '../components/DeepSeekSection.vue'
 import DeepSeekServiceStatus from '../components/DeepSeekServiceStatus.vue'
 import MiMoSection from '../components/MiMoSection.vue'
+import CodexSection from '../components/CodexSection.vue'
 import type { ProviderUsageData, AccountUsageData, UsageState } from '../types'
 import { useTheme } from '../composables/useTheme'
 

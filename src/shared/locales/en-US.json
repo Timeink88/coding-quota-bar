@@ -46,6 +46,7 @@
     "updateAvailableBanner": "New version v{version} available, click to view",
     "deepseekTokenExpired": "DeepSeek login expired, please re-login",
     "mimoTokenExpired": "MiMo login expired, please re-login",
+    "codexTokenExpired": "Codex CLI auth not found. Please install and login to Codex CLI first",
     "reloginBtn": "Re-login",
     "ttCacheHit": "Cache",
     "ttCacheMiss": "Input",
@@ -154,7 +155,11 @@
     "mimoBalance": "Account Balance",
     "mimoGiftBalance": "Gift",
     "mimoCashBalance": "Cash",
-    "mimoFrozenBalance": "Frozen"
+    "mimoFrozenBalance": "Frozen",
+    "codexPrimaryWindow": "Primary Window (3h)",
+    "codexSecondaryWindow": "Secondary Window (1d)",
+    "codexCredits": "Credits Balance",
+    "codexLimitReached": "Rate limit reached, Codex unavailable"
   },
   "tray": {
     "tooltip": "Coding Quota Bar - AI Usage Monitor",
@@ -171,7 +176,8 @@
     "minimax": "MiniMax",
     "kimi": "Kimi",
     "deepseek": "DeepSeek",
-    "mimo": "MiMo"
+    "mimo": "MiMo",
+    "codex": "Codex"
   },
   "concurrencyTest": {
     "title": "Concurrency Test",

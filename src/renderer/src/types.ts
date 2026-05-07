@@ -97,6 +97,7 @@ export interface AccountUsageData {
   performanceHistory30d: PerformanceRecord[]
   serviceStatus?: DeepSeekServiceComponent[]
   balance?: { total: string; gift: string; cash: string; frozen: string; currency: string }
+  limitReached?: boolean
 }
 
 /**
