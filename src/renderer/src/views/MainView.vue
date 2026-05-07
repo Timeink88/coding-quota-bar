@@ -427,6 +427,7 @@ onUnmounted(() => {
   border-radius: 8px;
   max-height: 0;
   overflow: hidden;
+  overflow-x: hidden;
   opacity: 0;
   margin: 0 10px;
   padding: 0 2px;
@@ -438,6 +439,7 @@ onUnmounted(() => {
 
 .provider-tabs.expanded {
   max-height: 40px;
+  overflow-x: auto;
   opacity: 1;
   margin-bottom: 8px;
   padding: 2px;
@@ -462,6 +464,13 @@ onUnmounted(() => {
   font-weight: 600;
   background: var(--bg-tab-active);
   box-shadow: var(--shadow-tab-active);
+}
+
+.provider-tabs::-webkit-scrollbar {
+  display: none;
+}
+.provider-tabs {
+  scrollbar-width: none;
 }
 
 .provider-name-row {
