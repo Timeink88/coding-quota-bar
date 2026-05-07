@@ -117,7 +117,8 @@
     "mimoLoginBtn": "Login to MiMo",
     "webLoginActive": "Logged In",
     "webLogoutBtn": "Log Out",
-    "webTokenExpired": "Login expired, click to re-login"
+    "webTokenExpired": "Login expired, click to re-login",
+    "codexToggleHint": "Reads local Codex CLI login (requires Codex CLI installed and logged in)"
   },
   "provider": {
     "expired": "Expired",

@@ -117,7 +117,8 @@
     "mimoLoginBtn": "登录 MiMo 平台",
     "webLoginActive": "已登录",
     "webLogoutBtn": "退出登录",
-    "webTokenExpired": "登录已过期，点击重新登录"
+    "webTokenExpired": "登录已过期，点击重新登录",
+    "codexToggleHint": "读取本机 Codex CLI 登录信息（需已安装并登录 Codex CLI）"
   },
   "provider": {
     "expired": "已过期",

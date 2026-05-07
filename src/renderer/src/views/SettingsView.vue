@@ -15,111 +15,121 @@
       <div v-for="info in providerList" :key="info.key" class="settings-card">
         <div class="provider-header">
           <span class="provider-title">{{ $t(`providers.${info.key}`) }}</span>
-          <button class="add-account-btn" @click="addAccount(info.key)">
+          <button v-if="info.key !== 'codex'" class="add-account-btn" @click="addAccount(info.key)">
             + {{ $t('settings.addAccount') }}
           </button>
         </div>
 
-        <div v-for="(account, idx) in info.accounts" :key="account.id" class="account-item">
+        <!-- Codex: 单开关模式（读取本地 auth 文件，不支持多账号） -->
+        <template v-if="info.key === 'codex'">
           <label class="toggle-row">
-            <input type="checkbox" v-model="account.enabled" />
+            <input type="checkbox" v-model="info.accounts[0].enabled" />
             <span class="toggle-switch"></span>
-            <input
-              class="account-label-input"
-              v-model="account.label"
-              :placeholder="$t('settings.accountLabelPlaceholder')"
-            />
+            <span class="toggle-label">{{ $t('settings.codexToggleHint') }}</span>
           </label>
-          <div class="provider-body" v-if="account.enabled">
-            <!-- MiMo: 仅网页登录，无 authMode 切换，无 API Key 输入 -->
-            <div v-if="info.key === 'mimo'" class="web-login-section">
-              <button
-                class="web-login-btn"
-                :class="{ active: account.webTokenStatus === 'active' }"
-                @click="handleMimoWebLogin(account)"
-              >
-                {{ account.webTokenStatus === 'active'
-                   ? $t('settings.webLoginActive')
-                   : account.webTokenStatus === 'expired'
-                     ? $t('settings.webTokenExpired')
-                     : $t('settings.mimoLoginBtn') }}
-              </button>
-              <button
-                v-if="account.webTokenStatus === 'active'"
-                class="web-logout-btn"
-                @click="handleMimoWebLogout(account)"
-              >
-                {{ $t('settings.webLogoutBtn') }}
-              </button>
-            </div>
+        </template>
 
-            <!-- Codex: 读取本地 auth 文件，无需凭证配置 -->
-
-            <!-- DeepSeek 认证模式选择（非 mimo / 非 codex） -->
-            <template v-else-if="info.key !== 'codex'">
-              <div v-if="info.key === 'deepseek'" class="auth-mode-row">
-                <label class="mode-option" :class="{ active: account.authMode !== 'weblogin' }" :title="$t('settings.authModeApikeyHint')">
-                  <input type="radio" :value="'apikey'" v-model="account.authMode" />
-                  <span>API Key</span>
-                </label>
-                <label class="mode-option" :class="{ active: account.authMode === 'weblogin' }" :title="$t('settings.authModeWebloginHint')">
-                  <input type="radio" :value="'weblogin'" v-model="account.authMode" />
-                  <span>{{ $t('settings.authModeWeblogin') }}</span>
-                </label>
-              </div>
-
-              <!-- API Key 输入（apikey 模式） -->
-              <div v-if="account.authMode !== 'weblogin'" class="input-group">
-                <input
-                  :type="account.showKey ? 'text' : 'password'"
-                  class="form-input"
-                  v-model="account.apiKey"
-                  placeholder="API Key"
-                  @input="account.apiKeyDirty = true"
-                />
-                <button class="icon-btn eye-btn" @click="account.showKey = !account.showKey">
-                  <svg v-if="account.showKey" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>
-                  </svg>
-                  <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
-                  </svg>
-                </button>
-                <button class="icon-btn delete-btn" :title="$t('settings.removeAccount')" @click="removeAccount(info.key, idx)">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                  </svg>
-                </button>
-              </div>
-
-              <!-- 网页登录按钮（weblogin 模式，仅 DeepSeek） -->
-              <div v-if="info.key === 'deepseek' && account.authMode === 'weblogin'" class="web-login-section">
+        <!-- 其他 Provider: 多账号模式 -->
+        <template v-else>
+          <div v-for="(account, idx) in info.accounts" :key="account.id" class="account-item">
+            <label class="toggle-row">
+              <input type="checkbox" v-model="account.enabled" />
+              <span class="toggle-switch"></span>
+              <input
+                class="account-label-input"
+                v-model="account.label"
+                :placeholder="$t('settings.accountLabelPlaceholder')"
+              />
+            </label>
+            <div class="provider-body" v-if="account.enabled">
+              <!-- MiMo: 仅网页登录，无 authMode 切换，无 API Key 输入 -->
+              <div v-if="info.key === 'mimo'" class="web-login-section">
                 <button
                   class="web-login-btn"
                   :class="{ active: account.webTokenStatus === 'active' }"
-                  @click="handleWebLogin(account)"
+                  @click="handleMimoWebLogin(account)"
                 >
                   {{ account.webTokenStatus === 'active'
                      ? $t('settings.webLoginActive')
                      : account.webTokenStatus === 'expired'
                        ? $t('settings.webTokenExpired')
-                       : $t('settings.webLoginBtn') }}
+                       : $t('settings.mimoLoginBtn') }}
                 </button>
                 <button
                   v-if="account.webTokenStatus === 'active'"
                   class="web-logout-btn"
-                  @click="handleWebLogout(account)"
+                  @click="handleMimoWebLogout(account)"
                 >
                   {{ $t('settings.webLogoutBtn') }}
                 </button>
               </div>
-            </template>
-          </div>
-        </div>
 
-        <div v-if="info.accounts.length === 0" class="no-accounts">
-          {{ $t('settings.noAccounts') }}
-        </div>
+              <!-- DeepSeek 认证模式选择 -->
+              <template v-else>
+                <div v-if="info.key === 'deepseek'" class="auth-mode-row">
+                  <label class="mode-option" :class="{ active: account.authMode !== 'weblogin' }" :title="$t('settings.authModeApikeyHint')">
+                    <input type="radio" :value="'apikey'" v-model="account.authMode" />
+                    <span>API Key</span>
+                  </label>
+                  <label class="mode-option" :class="{ active: account.authMode === 'weblogin' }" :title="$t('settings.authModeWebloginHint')">
+                    <input type="radio" :value="'weblogin'" v-model="account.authMode" />
+                    <span>{{ $t('settings.authModeWeblogin') }}</span>
+                  </label>
+                </div>
+
+                <!-- API Key 输入（apikey 模式） -->
+                <div v-if="account.authMode !== 'weblogin'" class="input-group">
+                  <input
+                    :type="account.showKey ? 'text' : 'password'"
+                    class="form-input"
+                    v-model="account.apiKey"
+                    placeholder="API Key"
+                    @input="account.apiKeyDirty = true"
+                  />
+                  <button class="icon-btn eye-btn" @click="account.showKey = !account.showKey">
+                    <svg v-if="account.showKey" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>
+                    </svg>
+                    <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                    </svg>
+                  </button>
+                  <button class="icon-btn delete-btn" :title="$t('settings.removeAccount')" @click="removeAccount(info.key, idx)">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                    </svg>
+                  </button>
+                </div>
+
+                <!-- 网页登录按钮（weblogin 模式，仅 DeepSeek） -->
+                <div v-if="info.key === 'deepseek' && account.authMode === 'weblogin'" class="web-login-section">
+                  <button
+                    class="web-login-btn"
+                    :class="{ active: account.webTokenStatus === 'active' }"
+                    @click="handleWebLogin(account)"
+                  >
+                    {{ account.webTokenStatus === 'active'
+                       ? $t('settings.webLoginActive')
+                       : account.webTokenStatus === 'expired'
+                         ? $t('settings.webTokenExpired')
+                         : $t('settings.webLoginBtn') }}
+                  </button>
+                  <button
+                    v-if="account.webTokenStatus === 'active'"
+                    class="web-logout-btn"
+                    @click="handleWebLogout(account)"
+                  >
+                    {{ $t('settings.webLogoutBtn') }}
+                  </button>
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <div v-if="info.accounts.length === 0" class="no-accounts">
+            {{ $t('settings.noAccounts') }}
+          </div>
+        </template>
       </div>
 
       <div class="section-label">{{ $t('settings.generalSection') }}</div>
@@ -370,24 +380,40 @@ onMounted(async () => {
 
   providerList.value = availableKeys.map(key => {
     const providerConfig = config.providers[key] as ProviderTypeConfig | undefined
+    const accounts = (providerConfig?.accounts ?? []).map((account: AccountConfig) => ({
+      id: account.id,
+      label: account.label ?? '',
+      enabled: account.enabled ?? false,
+      apiKey: account.apiKey ?? '',
+      showKey: false,
+      budget: (account as any).budget ?? undefined,
+      authMode: (key === 'mimo' || key === 'codex') ? (account.authMode ?? 'weblogin') : (account.authMode ?? 'apikey'),
+      webTokenStatus: key === 'mimo'
+        ? ((account as any).mimoLoggedIn ? 'active' : 'none')
+        : key === 'codex'
+          ? 'none'
+          : (account.hasWebToken ? 'active' : 'none'),
+      apiKeyDirty: false,
+    }))
+
+    // Codex: 确保始终有一个默认账户
+    if (key === 'codex' && accounts.length === 0) {
+      accounts.push({
+        id: generateId(),
+        label: 'Codex',
+        enabled: false,
+        apiKey: '',
+        showKey: false,
+        authMode: 'weblogin',
+        webTokenStatus: 'none',
+        apiKeyDirty: false,
+      })
+    }
+
     return {
       key,
       label: t(`providers.${key}`),
-      accounts: (providerConfig?.accounts ?? []).map((account: AccountConfig) => ({
-        id: account.id,
-        label: account.label ?? '',
-        enabled: account.enabled ?? false,
-        apiKey: account.apiKey ?? '',
-        showKey: false,
-        budget: (account as any).budget ?? undefined,
-        authMode: (key === 'mimo' || key === 'codex') ? (account.authMode ?? 'weblogin') : (account.authMode ?? 'apikey'),
-        webTokenStatus: key === 'mimo'
-          ? ((account as any).mimoLoggedIn ? 'active' : 'none')
-          : key === 'codex'
-            ? 'none'
-            : (account.hasWebToken ? 'active' : 'none'),
-        apiKeyDirty: false,
-      }))
+      accounts,
     }
   })
   refreshInterval.value = String(config.refreshInterval)
