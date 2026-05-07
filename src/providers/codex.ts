@@ -155,6 +155,15 @@ export class CodexProvider implements Provider {
           const refreshData = JSON.parse(refreshResp.body) as TokenRefreshResponse;
           accessToken = refreshData.access_token;
           console.log('[Codex] Token refreshed successfully');
+
+          // 写回 auth.json，避免重复刷新
+          try {
+            authFile.tokens!.access_token = refreshData.access_token;
+            authFile.last_refresh = new Date().toISOString();
+            fs.writeFileSync(authFilePath, JSON.stringify(authFile, null, 2), 'utf-8');
+          } catch (writeErr) {
+            console.warn('[Codex] Failed to write refreshed token to auth file:', writeErr);
+          }
         } else {
           console.warn(`[Codex] Token refresh failed: HTTP ${refreshResp.status}`);
         }
