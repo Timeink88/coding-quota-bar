@@ -2,7 +2,7 @@
   <template v-if="account.serviceStatus?.length">
     <div v-for="svc in account.serviceStatus" :key="svc.id" class="status-card">
       <div class="svc-header">
-        <span class="svc-name">{{ svcName(svc) }}</span>
+        <span class="svc-name link" @click="openStatusPage">{{ svcName(svc) }}</span>
         <span class="svc-uptime">{{ svc.uptime }}%</span>
       </div>
       <div class="svc-bar-row">
@@ -53,6 +53,10 @@ function svcStatusText(status: ComponentStatus): string {
   return t('quota.statusMajorOutage')
 }
 
+function openStatusPage(): void {
+  window.electronAPI.openExternal('https://status.deepseek.com/')
+}
+
 function dayTitle(offsetFromEnd: number): string {
   const today = new Date()
   const d = new Date(today)
@@ -86,6 +90,15 @@ function dayTitle(offsetFromEnd: number): string {
   font-weight: 600;
   font-size: 13px;
   color: var(--text-heading);
+}
+
+.svc-name.link {
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.svc-name.link:hover {
+  color: var(--color-primary);
 }
 
 .svc-uptime {
