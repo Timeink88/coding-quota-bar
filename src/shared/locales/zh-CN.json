@@ -158,7 +158,10 @@
     "mimoFrozenBalance": "冻结",
     "codexPrimaryWindow": "主窗口(3h)",
     "codexSecondaryWindow": "次窗口(1d)",
+    "codexCodeReview": "代码审查",
     "codexCredits": "余额",
+    "codexCreditsUnlimited": "余额（无限）",
+    "codexSubscriptionUntil": "订阅到期",
     "codexLimitReached": "已触发限流，Codex 不可用"
   },
   "tray": {

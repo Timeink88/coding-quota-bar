@@ -98,6 +98,7 @@ export interface AccountUsageData {
   serviceStatus?: DeepSeekServiceComponent[]
   balance?: { total: string; gift: string; cash: string; frozen: string; currency: string }
   limitReached?: boolean
+  codexOrgName?: string
 }
 
 /**

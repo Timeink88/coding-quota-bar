@@ -19,15 +19,20 @@ interface CodexAuthFile {
 
 /** Usage API 响应 */
 interface CodexUsageResponse {
-  rate_limit?: {
-    limit_reached?: boolean;
-    primary_window?: CodexWindowInfo;
-    secondary_window?: CodexWindowInfo;
-  };
+  rate_limit?: CodexRateLimitInfo;
+  code_review_rate_limit?: CodexRateLimitInfo;
   plan_type?: string;
   credits?: {
     balance?: string | null;
+    has_credits?: boolean;
+    unlimited?: boolean;
   };
+}
+
+interface CodexRateLimitInfo {
+  limit_reached?: boolean;
+  primary_window?: CodexWindowInfo;
+  secondary_window?: CodexWindowInfo;
 }
 
 interface CodexWindowInfo {
@@ -75,16 +80,34 @@ function isTokenExpired(accessToken: string): boolean {
   return Date.now() / 1000 > exp - 60;
 }
 
+interface UserInfo {
+  email?: string;
+  planType?: string;
+  organizationName?: string;
+  subscriptionActiveUntil?: string;
+}
+
 /**
  * 从 id_token 中提取用户信息
  */
-function extractUserInfo(idToken: string): { email?: string; planType?: string } {
+function extractUserInfo(idToken: string): UserInfo {
   const claims = decodeJWTPayload(idToken);
   if (!claims) return {};
   const email = claims.email as string | undefined;
   const authInfo = claims['https://api.openai.com/auth'] as Record<string, unknown> | undefined;
   const planType = authInfo?.chatgpt_plan_type as string | undefined;
-  return { email, planType };
+
+  let organizationName: string | undefined;
+  if (authInfo?.organizations && Array.isArray(authInfo.organizations) && authInfo.organizations.length > 0) {
+    organizationName = authInfo.organizations[0]?.title as string | undefined;
+  }
+
+  let subscriptionActiveUntil: string | undefined;
+  if (authInfo?.chatgpt_subscription_active_until) {
+    subscriptionActiveUntil = authInfo.chatgpt_subscription_active_until as string;
+  }
+
+  return { email, planType, organizationName, subscriptionActiveUntil };
 }
 
 export class CodexProvider implements Provider {
@@ -190,23 +213,22 @@ export class CodexProvider implements Provider {
     }
 
     // 5. 提取用户信息（id_token）
-    let planFromJWT: string | undefined;
+    let userInfo: UserInfo = {};
     if (tokens.id_token) {
-      const info = extractUserInfo(tokens.id_token);
-      planFromJWT = info.planType;
+      userInfo = extractUserInfo(tokens.id_token);
     }
 
-    return this.transformResult(data, planFromJWT);
+    return this.transformResult(data, userInfo);
   }
 
-  private transformResult(data: CodexUsageResponse, planFromJWT?: string): UsageResult {
+  private transformResult(data: CodexUsageResponse, userInfo: UserInfo): UsageResult {
     const rateLimit = data.rate_limit;
     const limitReached = rateLimit?.limit_reached ?? false;
 
     const primaryWindow = rateLimit?.primary_window;
     const secondaryWindow = rateLimit?.secondary_window;
 
-    const planType = data.plan_type || planFromJWT;
+    const planType = data.plan_type || userInfo.planType;
     // 格式化 plan type：首字母大写
     const level = planType ? planType.charAt(0).toUpperCase() + planType.slice(1).toLowerCase() : undefined;
 
@@ -214,43 +236,48 @@ export class CodexProvider implements Provider {
 
     // 主窗口（3h）
     if (primaryWindow) {
-      quotas.push({
-        label: 'quota.codexPrimaryWindow',
-        used: primaryWindow.used_percent ?? 0,
-        total: 100,
-        usageRate: primaryWindow.used_percent ?? 0,
-        resetAt: primaryWindow.reset_at
-          ? new Date(primaryWindow.reset_at * 1000).toISOString()
-          : '',
-        limitType: 'codex',
-      });
+      quotas.push(this.buildWindowQuota('quota.codexPrimaryWindow', primaryWindow, 'codex'));
     }
 
     // 次窗口（1d）
     if (secondaryWindow) {
-      quotas.push({
-        label: 'quota.codexSecondaryWindow',
-        used: secondaryWindow.used_percent ?? 0,
-        total: 100,
-        usageRate: secondaryWindow.used_percent ?? 0,
-        resetAt: secondaryWindow.reset_at
-          ? new Date(secondaryWindow.reset_at * 1000).toISOString()
-          : '',
-        limitType: 'codex',
-      });
+      quotas.push(this.buildWindowQuota('quota.codexSecondaryWindow', secondaryWindow, 'codex'));
+    }
+
+    // 代码审查限流（可选）
+    const codeReview = data.code_review_rate_limit;
+    if (codeReview?.primary_window) {
+      quotas.push(this.buildWindowQuota('quota.codexCodeReview', codeReview.primary_window, 'codex-review'));
     }
 
     // 余额
     if (data.credits?.balance != null) {
+      const balanceNum = parseFloat(data.credits.balance);
+      if (!isNaN(balanceNum)) {
+        const isUnlimited = data.credits.unlimited ?? false;
+        quotas.push({
+          label: isUnlimited ? 'quota.codexCreditsUnlimited' : 'quota.codexCredits',
+          used: balanceNum,
+          total: 0,
+          usageRate: 0,
+          resetAt: '',
+          hideBar: true,
+          currency: 'USD',
+          limitType: 'codex-credits',
+        });
+      }
+    }
+
+    // 订阅到期信息
+    if (userInfo.subscriptionActiveUntil) {
       quotas.push({
-        label: 'quota.codexCredits',
-        used: parseFloat(data.credits.balance),
+        label: 'quota.codexSubscriptionUntil',
+        used: 0,
         total: 0,
         usageRate: 0,
-        resetAt: '',
+        resetAt: userInfo.subscriptionActiveUntil,
         hideBar: true,
-        currency: 'USD',
-        limitType: 'codex-credits',
+        limitType: 'codex-subscription',
       });
     }
 
@@ -264,7 +291,21 @@ export class CodexProvider implements Provider {
       details: {
         quotas,
         limitReached,
+        codexOrgName: userInfo.organizationName,
       },
+    };
+  }
+
+  private buildWindowQuota(label: string, window: CodexWindowInfo, limitType: string): QuotaItem {
+    return {
+      label,
+      used: window.used_percent ?? 0,
+      total: 100,
+      usageRate: window.used_percent ?? 0,
+      resetAt: window.reset_at
+        ? new Date(window.reset_at * 1000).toISOString()
+        : '',
+      limitType,
     };
   }
 }

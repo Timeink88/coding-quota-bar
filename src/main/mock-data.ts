@@ -364,10 +364,13 @@ export function generateMockData(): Record<string, UsageResult> {
       level: 'Plus',
       details: {
         limitReached: false,
+        codexOrgName: undefined,
         quotas: [
           { label: 'quota.codexPrimaryWindow', used: 65, total: 100, usageRate: 65, resetAt: new Date(now + 2 * HOUR).toISOString(), limitType: 'codex' },
           { label: 'quota.codexSecondaryWindow', used: 35, total: 100, usageRate: 35, resetAt: new Date(now + 18 * HOUR).toISOString(), limitType: 'codex' },
+          { label: 'quota.codexCodeReview', used: 20, total: 100, usageRate: 20, resetAt: new Date(now + 3 * HOUR).toISOString(), limitType: 'codex-review' },
           { label: 'quota.codexCredits', used: 12.50, total: 0, usageRate: 0, resetAt: '', hideBar: true, currency: 'USD', limitType: 'codex-credits' },
+          { label: 'quota.codexSubscriptionUntil', used: 0, total: 0, usageRate: 0, resetAt: '2026-06-15T00:00:00Z', hideBar: true, limitType: 'codex-subscription' },
         ],
       },
     },

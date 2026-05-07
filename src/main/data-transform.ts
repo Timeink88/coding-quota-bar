@@ -55,6 +55,7 @@ export interface AccountDisplayData {
   serviceStatus?: import('../shared/types').DeepSeekServiceComponent[];
   balance?: { total: string; gift: string; cash: string; frozen: string; currency: string };
   limitReached?: boolean;
+  codexOrgName?: string;
 }
 
 /**
@@ -208,6 +209,7 @@ function convertAccountData(
     serviceStatus: (result.details?.serviceStatus as import('../shared/types').DeepSeekServiceComponent[]) ?? undefined,
     balance: (result.details?.balance as { total: string; gift: string; cash: string; frozen: string; currency: string }) ?? undefined,
     limitReached: (result.details?.limitReached as boolean) ?? undefined,
+    codexOrgName: (result.details?.codexOrgName as string) ?? undefined,
   };
 }
 

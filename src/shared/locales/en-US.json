@@ -158,7 +158,10 @@
     "mimoFrozenBalance": "Frozen",
     "codexPrimaryWindow": "Primary Window (3h)",
     "codexSecondaryWindow": "Secondary Window (1d)",
+    "codexCodeReview": "Code Review",
     "codexCredits": "Credits Balance",
+    "codexCreditsUnlimited": "Credits (Unlimited)",
+    "codexSubscriptionUntil": "Subscription Until",
     "codexLimitReached": "Rate limit reached, Codex unavailable"
   },
   "tray": {
