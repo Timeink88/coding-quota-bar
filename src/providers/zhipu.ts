@@ -131,10 +131,10 @@ function toISODate(ts: number | undefined | null): string {
  */
 function getLimitLabel(item: ZhipuLimitItem): { label: string; labelParams?: Record<string, string | number> } {
   if (item.type === 'TOKENS_LIMIT') {
-    if (item.unit === 1) {
-      return { label: 'quota.tokensLimitDaily', labelParams: { n: item.number } };
+    if (item.unit === 3) {
+      return { label: 'quota.tokensLimit', labelParams: { n: item.number } };
     }
-    return { label: 'quota.tokensLimit', labelParams: { n: item.number } };
+    return { label: 'quota.tokensLimitDaily' };
   }
   if (item.type === 'TIME_LIMIT') {
     return { label: 'quota.mcpUsage' };
