@@ -89,6 +89,7 @@ function clampToScreen(x: number, y: number): { x: number; y: number } {
  */
 function scheduleSavePosition(): void {
   if (!popupWindow || popupWindow.isDestroyed()) return;
+  if (_getConfigManager()?.getConfig()?.rememberPopupPosition !== true) return;
   if (savePositionTimer) {
     clearTimeout(savePositionTimer);
   }
@@ -223,7 +224,7 @@ export function showPopupWindow(mode: 'hover' | 'pinned'): void {
   }
   if (popupWindow && !popupWindow.isDestroyed()) {
     const config = _getConfigManager()?.getConfig();
-    const savedPos = config?.popupPosition;
+    const savedPos = config?.rememberPopupPosition ? config.popupPosition : undefined;
     const { x, y } = savedPos ? clampToScreen(savedPos.x, savedPos.y) : getPopupPosition();
     popupWindow.setBounds({ x, y, width: POPUP_WIDTH, height: POPUP_HEIGHT });
     isPopupVisible = true;

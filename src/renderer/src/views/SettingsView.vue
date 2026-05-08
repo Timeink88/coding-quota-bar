@@ -191,6 +191,11 @@
             <span class="toggle-switch"></span>
             <span class="toggle-label">{{ $t('settings.memorySavingMode') }}</span>
           </label>
+          <label class="toggle-row" :title="$t('settings.rememberPopupPositionHint')">
+            <input type="checkbox" v-model="rememberPopupPosition" />
+            <span class="toggle-switch"></span>
+            <span class="toggle-label">{{ $t('settings.rememberPopupPosition') }}</span>
+          </label>
           <label class="toggle-row" :title="$t('settings.showEstimatedCostHint')">
             <input type="checkbox" v-model="showEstimatedCost" />
             <span class="toggle-switch"></span>
@@ -276,6 +281,7 @@ const isPackaged = ref(true)
 const language = ref('zh-CN')
 const popupTrigger = ref<'hover' | 'click'>('hover')
 const memorySavingMode = ref(false)
+const rememberPopupPosition = ref(false)
 const showEstimatedCost = ref(false)
 const trayDisplayRule = ref<string>('lowest')
 const autoCheckUpdateEnabled = ref(true)
@@ -422,12 +428,13 @@ onMounted(async () => {
   language.value = config.language || locale.value
   popupTrigger.value = config.popupTrigger ?? 'hover'
   memorySavingMode.value = config.memorySavingMode ?? false
+  rememberPopupPosition.value = config.rememberPopupPosition ?? false
   showEstimatedCost.value = config.showEstimatedCost ?? false
   trayDisplayRule.value = config.trayDisplayRule ?? 'lowest'
   autoCheckUpdateEnabled.value = config.autoCheckUpdate ?? true
 
   // 配置加载完后开始监听变化，自动保存
-  watch([providerList, refreshInterval, autoStart, language, popupTrigger, memorySavingMode, showEstimatedCost, trayDisplayRule, autoCheckUpdateEnabled], () => {
+  watch([providerList, refreshInterval, autoStart, language, popupTrigger, memorySavingMode, rememberPopupPosition, showEstimatedCost, trayDisplayRule, autoCheckUpdateEnabled], () => {
     scheduleSave()
   }, { deep: true })
 
@@ -514,6 +521,7 @@ async function saveConfig() {
       autoStart: autoStart.value,
       popupTrigger: popupTrigger.value,
       memorySavingMode: memorySavingMode.value,
+      rememberPopupPosition: rememberPopupPosition.value,
       showEstimatedCost: showEstimatedCost.value,
       language: language.value,
       trayDisplayRule: trayDisplayRule.value,

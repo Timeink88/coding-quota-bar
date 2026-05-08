@@ -88,6 +88,8 @@
     "popupTriggerLabel": "Popup Trigger",
     "memorySavingMode": "Memory Saving Mode",
     "memorySavingModeHint": "Release renderer process when popup is hidden to reduce memory usage (popup response may be slightly slower)",
+    "rememberPopupPosition": "Remember Window Position",
+    "rememberPopupPositionHint": "After dragging the popup, it will appear at the same position next time",
     "showEstimatedCost": "Token Cost Estimation",
     "showEstimatedCostHint": "Z AI only. Estimates API cost per model using 96% cache / 3% input / 1% output token ratio",
     "trayDisplayRule": "Icon Quota Display",
