@@ -201,4 +201,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onMimoWebLoginSuccess: (callback: (accountId: string) => void) => {
     ipcRenderer.on('mimo-web-login-success', (_, accountId) => callback(accountId));
   },
+
+  /**
+   * Kimi 网页登录
+   */
+  kimiWebLogin: (accountId: string) => ipcRenderer.invoke('kimi-web-login', accountId),
+  kimiWebLogout: (accountId: string) => ipcRenderer.invoke('kimi-web-logout', accountId),
+  onKimiWebLoginSuccess: (callback: (accountId: string) => void) => {
+    ipcRenderer.on('kimi-web-login-success', (_, accountId) => callback(accountId));
+  },
 });

@@ -32,6 +32,9 @@ import {
   setMimoAuthDeps,
 } from './mimo-auth';
 import {
+  setKimiAuthDeps,
+} from './kimi-auth';
+import {
   setDataTransformDeps,
   buildUsageData,
 } from './data-transform';
@@ -85,6 +88,7 @@ async function initialize(): Promise<void> {
   setUpdateManagerDeps({ getConfigManager, getPopupWindow: getPopupWindow });
   setDeepseekAuthDeps({ getConfigManager, getPopupWindow: getPopupWindow });
   setMimoAuthDeps({ getConfigManager, getPopupWindow: getPopupWindow });
+  setKimiAuthDeps({ getConfigManager, getPopupWindow: getPopupWindow });
   setDataTransformDeps({ getConfigManager, getScheduler });
   setIpcHandlersDeps({ getConfigManager, getScheduler });
 
@@ -143,21 +147,25 @@ async function initialize(): Promise<void> {
   scheduler.on('refreshed', async () => {
     trayManager?.stopLoading();
 
-    // 自动刷新 DeepSeek token；同步 MiMo 登录状态
+    // 自动刷新 DeepSeek token；同步 MiMo / Kimi 登录状态
     if (!isAutoRefreshingToken) {
       const aggregated = scheduler!.getAggregatedData();
       if (aggregated) {
         const expiredAccounts: Array<{ provider: string; accountId: string }> = [];
         const mimoSuccessAccounts: string[] = [];
+        const kimiSuccessAccounts: string[] = [];
         for (const [key, result] of aggregated.results) {
           const [provider, accountId] = key.split(':');
           if (result.error === 'TOKEN_EXPIRED') {
-            if (provider === 'deepseek' || provider === 'mimo') {
+            if (provider === 'deepseek' || provider === 'mimo' || provider === 'kimi') {
               expiredAccounts.push({ provider, accountId });
             }
           } else if (provider === 'mimo' && !result.error) {
             // MiMo 成功获取数据，记录需要同步登录状态的账户
             mimoSuccessAccounts.push(accountId);
+          } else if (provider === 'kimi' && !result.error) {
+            // Kimi 成功获取数据，记录需要同步登录状态的账户
+            kimiSuccessAccounts.push(accountId);
           }
         }
 
@@ -173,6 +181,28 @@ async function initialize(): Promise<void> {
                 const account = mimo.accounts.find(a => a.id === accountId);
                 if (account && !account.mimoLoggedIn) {
                   account.mimoLoggedIn = true;
+                  needSave = true;
+                }
+              }
+              if (needSave) {
+                await configManager!.updateConfig({ providers });
+              }
+            }
+          }
+        }
+
+        // Kimi 成功获取数据时同步 kimiLoggedIn 状态
+        if (kimiSuccessAccounts.length > 0) {
+          const cfg = configManager?.getConfig();
+          if (cfg) {
+            const providers = structuredClone(cfg.providers);
+            const kimi = providers.kimi as import('../shared/types').ProviderTypeConfig;
+            if (kimi?.accounts) {
+              let needSave = false;
+              for (const accountId of kimiSuccessAccounts) {
+                const account = kimi.accounts.find(a => a.id === accountId);
+                if (account && !account.kimiLoggedIn) {
+                  account.kimiLoggedIn = true;
                   needSave = true;
                 }
               }
@@ -200,6 +230,18 @@ async function initialize(): Promise<void> {
                   const account = mimo?.accounts?.find(a => a.id === accountId);
                   if (account) {
                     account.mimoLoggedIn = false;
+                    await configManager!.updateConfig({ providers });
+                  }
+                }
+              } else if (provider === 'kimi') {
+                // kimi-auth JWT 过期，标记为未登录
+                const cfg = configManager?.getConfig();
+                if (cfg) {
+                  const providers = structuredClone(cfg.providers);
+                  const kimi = providers.kimi as import('../shared/types').ProviderTypeConfig;
+                  const account = kimi?.accounts?.find(a => a.id === accountId);
+                  if (account) {
+                    account.kimiLoggedIn = false;
                     await configManager!.updateConfig({ providers });
                   }
                 }

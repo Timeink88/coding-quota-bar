@@ -20,6 +20,7 @@ import {
 } from './popup-manager';
 import { deepseekWebLogin, deepseekWebLogout } from './deepseek-auth';
 import { mimoWebLogin, mimoWebLogout } from './mimo-auth';
+import { kimiWebLogin, kimiWebLogout } from './kimi-auth';
 import { checkForUpdate, downloadUpdate, getUpdateStatus } from './update-manager';
 
 let _getConfigManager: () => ConfigManager | null = () => null;
@@ -91,7 +92,7 @@ export function setupIpcHandlers(): void {
         delete (account as any).webUserAgent;
       }
     }
-    return { ...sanitized, isPackaged: app.isPackaged, updateStatus: getUpdateStatus() };
+    return { ...sanitized, isPackaged: app.isPackaged, updateStatus: getUpdateStatus(), isMockMode: process.env.CQB_DEV === '1' && process.env.CQB_MOCK === '1' };
   });
 
   // 获取可用的 provider 列表（编译时配置）
@@ -214,5 +215,15 @@ export function setupIpcHandlers(): void {
   // MiMo 网页登出
   ipcMain.handle('mimo-web-logout', async (_, accountId: string) => {
     await mimoWebLogout(accountId);
+  });
+
+  // Kimi 网页登录
+  ipcMain.handle('kimi-web-login', async (_, accountId: string) => {
+    return await kimiWebLogin(accountId);
+  });
+
+  // Kimi 网页登出
+  ipcMain.handle('kimi-web-logout', async (_, accountId: string) => {
+    await kimiWebLogout(accountId);
   });
 }

@@ -99,8 +99,8 @@ function hasEnabledProviders(): boolean {
     return Array.isArray(accounts) && accounts.some(a => {
       if (!a.enabled) return false;
       if (a.authMode === 'weblogin') {
-        // MiMo 使用 Cookie 认证，Codex 读取本地 auth 文件，均不需要 webToken
-        if (type === 'mimo' || type === 'codex') return true;
+        // MiMo Cookie 认证，Kimi JWT 认证（无 token 时返回 TOKEN_EXPIRED），Codex 读取本地 auth 文件
+        if (type === 'mimo' || type === 'kimi' || type === 'codex') return true;
         return !!a.webToken?.trim();
       }
       return !!a.apiKey?.trim();

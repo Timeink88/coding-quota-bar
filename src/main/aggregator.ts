@@ -1,7 +1,8 @@
 import type { UsageResult } from '../shared/types';
-import type { LoadedProvider } from './loader';
+import type { LoadedProvider, ProviderType } from './loader';
 import { generateMockData } from './mock-data';
 import { fetchServiceStatus } from '../providers/deepseek';
+import { getAvailableProviderKeys } from './loader';
 
 /**
  * 聚合后的用量数据
@@ -46,10 +47,21 @@ export class UsageAggregator {
       console.log('[Aggregator] MOCK MODE - using simulated data');
       const MOCK_DATA = generateMockData();
       this.results.clear();
+
+      // 为已加载的 provider 生成 mock 数据（含真实 accountId）
+      const loadedTypes = new Set<string>();
       for (const { type, accountId } of providers) {
+        loadedTypes.add(type);
         const compoundKey = `${type}:${accountId}`;
         const mock = MOCK_DATA[type] || { used: 0, total: 100, expiresAt: '', details: {} };
         this.results.set(compoundKey, mock);
+      }
+
+      // 为 available 但未加载的 provider 也生成 mock 数据（无需用户手动添加账号）
+      for (const type of getAvailableProviderKeys()) {
+        if (!loadedTypes.has(type) && MOCK_DATA[type]) {
+          this.results.set(`${type}:mock`, MOCK_DATA[type]);
+        }
       }
       // DeepSeek 服务状态使用真实 API 数据
       const deepseekEntries = [...this.results.entries()].filter(([k]) => k.startsWith('deepseek:'));

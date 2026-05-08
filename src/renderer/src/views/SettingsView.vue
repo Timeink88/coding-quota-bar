@@ -42,23 +42,23 @@
               />
             </label>
             <div class="provider-body" v-if="account.enabled">
-              <!-- MiMo: 仅网页登录，无 authMode 切换，无 API Key 输入 -->
-              <div v-if="info.key === 'mimo'" class="web-login-section">
+              <!-- MiMo/Kimi: 仅网页登录，无 authMode 切换，无 API Key 输入 -->
+              <div v-if="info.key === 'mimo' || info.key === 'kimi'" class="web-login-section">
                 <button
                   class="web-login-btn"
                   :class="{ active: account.webTokenStatus === 'active' }"
-                  @click="handleMimoWebLogin(account)"
+                  @click="info.key === 'mimo' ? handleMimoWebLogin(account) : handleKimiWebLogin(account)"
                 >
                   {{ account.webTokenStatus === 'active'
                      ? $t('settings.webLoginActive')
                      : account.webTokenStatus === 'expired'
                        ? $t('settings.webTokenExpired')
-                       : $t('settings.mimoLoginBtn') }}
+                       : info.key === 'mimo' ? $t('settings.mimoLoginBtn') : $t('settings.kimiLoginBtn') }}
                 </button>
                 <button
                   v-if="account.webTokenStatus === 'active'"
                   class="web-logout-btn"
-                  @click="handleMimoWebLogout(account)"
+                  @click="info.key === 'mimo' ? handleMimoWebLogout(account) : handleKimiWebLogout(account)"
                 >
                   {{ $t('settings.webLogoutBtn') }}
                 </button>
@@ -316,7 +316,7 @@ function addAccount(providerKey: string) {
     enabled: true,
     apiKey: '',
     showKey: false,
-    authMode: (providerKey === 'mimo' || providerKey === 'codex') ? 'weblogin' : 'apikey',
+    authMode: (providerKey === 'mimo' || providerKey === 'kimi' || providerKey === 'codex') ? 'weblogin' : 'apikey',
     webTokenStatus: 'none',
     apiKeyDirty: false,
   })
@@ -361,6 +361,22 @@ async function handleMimoWebLogout(account: AccountInfo) {
   if (freshConfig) currentConfig.value = freshConfig
 }
 
+async function handleKimiWebLogin(account: AccountInfo) {
+  const result = await window.electronAPI.kimiWebLogin(account.id)
+  if (result.success) {
+    account.webTokenStatus = 'active'
+    const freshConfig = await window.electronAPI.getConfig()
+    if (freshConfig) currentConfig.value = freshConfig
+  }
+}
+
+async function handleKimiWebLogout(account: AccountInfo) {
+  await window.electronAPI.kimiWebLogout(account.id)
+  account.webTokenStatus = 'none'
+  const freshConfig = await window.electronAPI.getConfig()
+  if (freshConfig) currentConfig.value = freshConfig
+}
+
 function scheduleSave() {
   if (saveTimer) clearTimeout(saveTimer)
   saveTimer = setTimeout(() => {
@@ -377,6 +393,7 @@ onMounted(async () => {
 
   // 从主进程获取可用的 provider 列表
   const availableKeys: string[] = await window.electronAPI.getAvailableProviders()
+  const isMockMode = (config as any).isMockMode ?? false
 
   providerList.value = availableKeys.map(key => {
     const providerConfig = config.providers[key] as ProviderTypeConfig | undefined
@@ -387,12 +404,14 @@ onMounted(async () => {
       apiKey: account.apiKey ?? '',
       showKey: false,
       budget: (account as any).budget ?? undefined,
-      authMode: (key === 'mimo' || key === 'codex') ? (account.authMode ?? 'weblogin') : (account.authMode ?? 'apikey'),
+      authMode: (key === 'mimo' || key === 'kimi' || key === 'codex') ? (account.authMode ?? 'weblogin') : (account.authMode ?? 'apikey'),
       webTokenStatus: key === 'mimo'
         ? ((account as any).mimoLoggedIn ? 'active' : 'none')
-        : key === 'codex'
-          ? 'none'
-          : (account.hasWebToken ? 'active' : 'none'),
+        : key === 'kimi'
+          ? ((account as any).kimiLoggedIn ? 'active' : 'none')
+          : key === 'codex'
+            ? 'none'
+            : (account.hasWebToken ? 'active' : 'none'),
       apiKeyDirty: false,
     }))
 
@@ -489,9 +508,21 @@ async function saveConfig() {
 
   const providers: Record<string, ProviderTypeConfig> = {}
   for (const info of providerList.value) {
+    const existingProvider = currentConfig.value.providers[info.key] as ProviderTypeConfig | undefined
     providers[info.key] = {
       accounts: info.accounts.map(a => {
+        // 从原配置中保留登录相关字段
+        const existingAccount = existingProvider?.accounts?.find(ea => ea.id === a.id)
+        const preserved: Record<string, unknown> = {}
+        if (existingAccount) {
+          for (const key of ['webToken', 'kimiLoggedIn', 'mimoLoggedIn', 'hasWebToken'] as const) {
+            if ((existingAccount as any)[key] !== undefined) {
+              preserved[key] = (existingAccount as any)[key]
+            }
+          }
+        }
         const update: Record<string, unknown> = {
+          ...preserved,
           id: a.id,
           label: a.label,
           enabled: a.enabled,

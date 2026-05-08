@@ -46,6 +46,8 @@
     "updateAvailableBanner": "New version v{version} available, click to view",
     "deepseekTokenExpired": "DeepSeek login expired, please re-login",
     "mimoTokenExpired": "MiMo login expired, please re-login",
+    "kimiTokenExpired": "Kimi login expired, please re-login",
+    "kimiNoSubscription": "No Coding Plan subscription, unable to view quota",
     "codexTokenExpired": "Codex CLI auth not found. Please install and login to Codex CLI first",
     "reloginBtn": "Re-login",
     "ttCacheHit": "Cache",
@@ -115,6 +117,7 @@
     "authModeWebloginHint": "Query balance, usage and cost details via web API",
     "webLoginBtn": "Login to DeepSeek",
     "mimoLoginBtn": "Login to MiMo",
+    "kimiLoginBtn": "Login to Kimi",
     "webLoginActive": "Logged In",
     "webLogoutBtn": "Log Out",
     "webTokenExpired": "Login expired, click to re-login",
@@ -163,7 +166,9 @@
     "codexCredits": "Credits Balance",
     "codexCreditsUnlimited": "Credits (Unlimited)",
     "codexSubscriptionUntil": "Subscription Until",
-    "codexLimitReached": "Rate limit reached, Codex unavailable"
+    "codexLimitReached": "Rate limit reached, Codex unavailable",
+    "kimiWeeklyQuota": "Weekly Quota",
+    "kimiRateLimit": "{n}-Hour Limit"
   },
   "tray": {
     "tooltip": "Coding Quota Bar - AI Usage Monitor",

@@ -347,14 +347,16 @@ export function generateMockData(): Record<string, UsageResult> {
     },
 
     kimi: {
-      used: 120000,
-      total: 150000,
-      expiresAt: new Date(now + 7 * DAY).toISOString(),
+      used: 375,
+      total: 2048,
+      expiresAt: new Date(now + 5 * DAY).toISOString(),
+      level: 'Moderato',
       details: {
         quotas: [
-          { label: '配额', used: 120000, total: 150000, usageRate: 80, resetAt: new Date(now + 7 * DAY).toISOString() }
-        ]
-      }
+          { label: 'quota.kimiWeeklyQuota', used: 120, total: 500, usageRate: 24, resetAt: new Date(now + 5 * DAY).toISOString() },
+          { label: 'quota.kimiRateLimit', labelParams: { n: 5 }, used: 30, total: 100, usageRate: 30, resetAt: new Date(now + 3 * HOUR).toISOString() },
+        ],
+      },
     },
 
     codex: {

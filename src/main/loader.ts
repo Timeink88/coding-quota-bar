@@ -82,8 +82,8 @@ export class ProviderLoader {
         if (authMode === 'apikey' && !account.apiKey?.trim()) {
           continue;
         }
-        // MiMo 使用 Cookie 认证，Codex 读取本地 auth 文件，均不需要 webToken
-        if (authMode === 'weblogin' && type !== 'mimo' && type !== 'codex' && !account.webToken?.trim()) {
+        // MiMo 使用 Cookie 认证，Kimi/Codex 不依赖 webToken 加载
+        if (authMode === 'weblogin' && type !== 'mimo' && type !== 'kimi' && type !== 'codex' && !account.webToken?.trim()) {
           continue;
         }
 

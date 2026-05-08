@@ -46,6 +46,8 @@
     "updateAvailableBanner": "发现新版本 v{version}，点击查看",
     "deepseekTokenExpired": "DeepSeek 登录已过期，请重新登录",
     "mimoTokenExpired": "MiMo 登录已过期，请重新登录",
+    "kimiTokenExpired": "Kimi 登录已过期，请重新登录",
+    "kimiNoSubscription": "当前账号未订阅 Coding Plan，无法查看额度",
     "codexTokenExpired": "未找到 Codex CLI 登录信息，请先安装并登录 Codex CLI",
     "reloginBtn": "重新登录",
     "ttCacheHit": "缓存",
@@ -115,6 +117,7 @@
     "authModeWebloginHint": "通过网页接口查询余额、用量和费用明细",
     "webLoginBtn": "登录 DeepSeek",
     "mimoLoginBtn": "登录 MiMo 平台",
+    "kimiLoginBtn": "登录 Kimi",
     "webLoginActive": "已登录",
     "webLogoutBtn": "退出登录",
     "webTokenExpired": "登录已过期，点击重新登录",
@@ -163,7 +166,9 @@
     "codexCredits": "余额",
     "codexCreditsUnlimited": "余额（无限）",
     "codexSubscriptionUntil": "订阅到期",
-    "codexLimitReached": "已触发限流，Codex 不可用"
+    "codexLimitReached": "已触发限流，Codex 不可用",
+    "kimiWeeklyQuota": "周额度",
+    "kimiRateLimit": "{n}小时限额"
   },
   "tray": {
     "tooltip": "Coding Quota Bar - AI用量监控",
