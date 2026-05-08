@@ -33,6 +33,7 @@ export interface TrayCallbacks {
   onSettings: () => void;
   onAutoStartToggle: (enabled: boolean) => void;
   onCheckUpdate: () => void;
+  onResetPopupPosition: () => void;
   onQuit: () => void;
 }
 
@@ -266,6 +267,10 @@ export class TrayManager {
       {
         label: t('tray.checkUpdate'),
         click: () => this.handleCheckUpdate()
+      },
+      {
+        label: t('tray.resetPosition'),
+        click: () => this.callbacks?.onResetPopupPosition()
       },
       {
         label: t('tray.quit'),

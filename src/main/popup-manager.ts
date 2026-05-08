@@ -21,6 +21,7 @@ let isLocked = false;
 let isHoveringWindow = false;
 let isPopupVisible = false;
 let hideTimer: ReturnType<typeof setTimeout> | null = null;
+let savePositionTimer: ReturnType<typeof setTimeout> | null = null;
 let blurHandler: (() => void) | null = null;
 
 let _getTrayManager: () => TrayManager | null = () => null;
@@ -67,6 +68,46 @@ function getPopupPosition(): { x: number; y: number } {
 }
 
 /**
+ * 将弹窗位置限制在可见显示器范围内
+ * 如果位置不在任何显示器上（如显示器已断开），回退到托盘位置
+ */
+function clampToScreen(x: number, y: number): { x: number; y: number } {
+  const displays = screen.getAllDisplays();
+  for (const display of displays) {
+    const { x: dx, y: dy, width, height } = display.workArea;
+    // 窗口有任意部分与显示器工作区重叠，保留用户原始位置
+    if (x + POPUP_WIDTH > dx && x < dx + width && y + POPUP_HEIGHT > dy && y < dy + height) {
+      return { x, y };
+    }
+  }
+  // 窗口完全不在任何显示器上（如显示器已断开），回退到托盘位置
+  return getPopupPosition();
+}
+
+/**
+ * 延迟保存弹窗位置到配置（防抖）
+ */
+function scheduleSavePosition(): void {
+  if (!popupWindow || popupWindow.isDestroyed()) return;
+  if (savePositionTimer) {
+    clearTimeout(savePositionTimer);
+  }
+  savePositionTimer = setTimeout(() => {
+    savePositionTimer = null;
+    if (!popupWindow || popupWindow.isDestroyed()) return;
+    const bounds = popupWindow.getBounds();
+    const configManager = _getConfigManager();
+    if (configManager) {
+      configManager.updateConfig({
+        popupPosition: { x: bounds.x, y: bounds.y }
+      }).catch(err => {
+        console.warn('[Popup] Failed to save popup position:', err);
+      });
+    }
+  }, 500);
+}
+
+/**
  * 创建悬浮详情面板（启动时调用一次，之后复用 show/hide）
  */
 export function createPopupWindow(): void {
@@ -100,6 +141,12 @@ export function createPopupWindow(): void {
 
   popupWindow.on('closed', () => {
     popupWindow = null;
+  });
+
+  popupWindow.on('move', () => {
+    if (isPopupVisible) {
+      scheduleSavePosition();
+    }
   });
 
   if (process.env.CQB_DEVTOOLS === '1') {
@@ -138,14 +185,28 @@ export function hidePopupWindow(): void {
   if (!popupWindow || popupWindow.isDestroyed()) return;
   detachBlurHandler();
 
+  isPopupVisible = false;
+
+  // 有未保存的位置（用户刚拖动过），立即保存再隐藏，避免丢失
+  if (savePositionTimer) {
+    clearTimeout(savePositionTimer);
+    savePositionTimer = null;
+    const bounds = popupWindow.getBounds();
+    if (bounds.x > -999 && bounds.y > -999) {
+      _getConfigManager()?.updateConfig({
+        popupPosition: { x: bounds.x, y: bounds.y }
+      }).catch(err => {
+        console.warn('[Popup] Failed to save popup position:', err);
+      });
+    }
+  }
+
   if (isMemorySavingMode()) {
     popupWindow.destroy();
     popupWindow = null;
   } else {
     popupWindow.setBounds({ x: -9999, y: -9999, width: POPUP_WIDTH, height: POPUP_HEIGHT });
   }
-
-  isPopupVisible = false;
   popupMode = PopupMode.Hidden;
   isLocked = false;
 }
@@ -161,7 +222,9 @@ export function showPopupWindow(mode: 'hover' | 'pinned'): void {
     createPopupWindow();
   }
   if (popupWindow && !popupWindow.isDestroyed()) {
-    const { x, y } = getPopupPosition();
+    const config = _getConfigManager()?.getConfig();
+    const savedPos = config?.popupPosition;
+    const { x, y } = savedPos ? clampToScreen(savedPos.x, savedPos.y) : getPopupPosition();
     popupWindow.setBounds({ x, y, width: POPUP_WIDTH, height: POPUP_HEIGHT });
     isPopupVisible = true;
     popupMode = mode === 'hover' ? PopupMode.Hover : PopupMode.Pinned;
@@ -343,8 +406,28 @@ export function showFeedbackWindow(): void {
  * 销毁弹出窗口（用于退出前清理）
  */
 export function destroyPopupWindow(): void {
+  if (savePositionTimer) {
+    clearTimeout(savePositionTimer);
+    savePositionTimer = null;
+  }
   if (popupWindow && !popupWindow.isDestroyed()) {
     popupWindow.destroy();
   }
   popupWindow = null;
+}
+
+/**
+ * 重置弹窗位置为托盘默认位置
+ */
+export function resetPopupPosition(): void {
+  const configManager = _getConfigManager();
+  if (configManager) {
+    configManager.updateConfig({ popupPosition: undefined }).catch(err => {
+      console.warn('[Popup] Failed to reset popup position:', err);
+    });
+  }
+  if (popupWindow && !popupWindow.isDestroyed() && isPopupVisible) {
+    const { x, y } = getPopupPosition();
+    popupWindow.setBounds({ x, y, width: POPUP_WIDTH, height: POPUP_HEIGHT });
+  }
 }

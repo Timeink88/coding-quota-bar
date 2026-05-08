@@ -173,6 +173,7 @@
     "autoStart": "Launch at Startup",
     "about": "About",
     "checkUpdate": "Check for Updates",
+    "resetPosition": "Reset Popup Position",
     "quit": "Quit"
   },
   "providers": {

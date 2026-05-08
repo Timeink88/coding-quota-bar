@@ -173,6 +173,7 @@
     "autoStart": "开机自启",
     "about": "关于",
     "checkUpdate": "检查更新",
+    "resetPosition": "重置弹窗位置",
     "quit": "退出"
   },
   "providers": {
