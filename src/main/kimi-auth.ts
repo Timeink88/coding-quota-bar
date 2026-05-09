@@ -84,8 +84,20 @@ export function kimiWebLogin(accountId: string): Promise<{ success: boolean; err
 
     const partition = `persist:kimi-${accountId}`;
 
-    // 先清除该分区的 session 数据，确保无残留旧 cookie
-    session.fromPartition(partition).clearStorageData().then(() => {
+    // 检查当前 token 是否有效，决定是否需要清除旧 session
+    const configManager = _getConfigManager();
+    const currentConfig = configManager?.getConfig();
+    const kimiProvider = currentConfig?.providers?.kimi as ProviderTypeConfig | undefined;
+    const currentAccount = kimiProvider?.accounts?.find(a => a.id === accountId);
+    const currentToken = (currentAccount as any)?.webToken as string | undefined;
+    const hasValidToken = currentToken && isValidLoginToken(currentToken);
+
+    // 仅在未登录时清除旧 session，已登录则保留 cookie 使页面保持登录态
+    const sessionReady = hasValidToken
+      ? Promise.resolve()
+      : session.fromPartition(partition).clearStorageData();
+
+    sessionReady.then(() => {
       const win = new BrowserWindow({
         width: 1024,
         height: 768,
