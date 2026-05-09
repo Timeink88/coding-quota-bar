@@ -17,6 +17,7 @@ import {
   notifyHoverState,
   destroyPopupWindow,
   showFeedbackWindow,
+  saveCurrentPopupPosition,
 } from './popup-manager';
 import { deepseekWebLogin, deepseekWebLogout } from './deepseek-auth';
 import { mimoWebLogin, mimoWebLogout } from './mimo-auth';
@@ -125,6 +126,10 @@ export function setupIpcHandlers(): void {
     const configManager = _getConfigManager();
     if (!configManager) return null;
     await configManager.updateConfig(updates);
+    // "记住窗口位置"从关闭切到打开时，立即记录当前位置
+    if (updates.rememberPopupPosition === true) {
+      saveCurrentPopupPosition();
+    }
     return configManager.getConfig();
   });
 

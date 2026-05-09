@@ -23,6 +23,8 @@ let isPopupVisible = false;
 let hideTimer: ReturnType<typeof setTimeout> | null = null;
 let savePositionTimer: ReturnType<typeof setTimeout> | null = null;
 let blurHandler: (() => void) | null = null;
+/** 内存中始终追踪窗口最后停留位置（即使"记住窗口位置"关闭） */
+let lastDragPosition: { x: number; y: number } | null = null;
 
 let _getTrayManager: () => TrayManager | null = () => null;
 let _getConfigManager: () => ConfigManager | null = () => null;
@@ -106,6 +108,23 @@ function scheduleSavePosition(): void {
       });
     }
   }, 500);
+}
+
+/**
+ * 立即保存弹窗当前位置到 config（开关打开时调用）
+ */
+export function saveCurrentPopupPosition(): void {
+  if (!popupWindow || popupWindow.isDestroyed()) return;
+  const bounds = popupWindow.getBounds();
+  if (bounds.x <= -999 || bounds.y <= -999) return;
+  const configManager = _getConfigManager();
+  if (configManager) {
+    configManager.updateConfig({
+      popupPosition: { x: bounds.x, y: bounds.y },
+    }).catch(err => {
+      console.warn('[Popup] Failed to save popup position:', err);
+    });
+  }
 }
 
 /**
