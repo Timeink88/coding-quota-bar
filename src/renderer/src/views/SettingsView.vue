@@ -408,7 +408,7 @@ onMounted(async () => {
       webTokenStatus: key === 'mimo'
         ? ((account as any).mimoLoggedIn ? 'active' : 'none')
         : key === 'kimi'
-          ? ((account as any).kimiLoggedIn ? 'active' : 'none')
+          ? ((account as any).kimiTokenStatus ?? 'none')
           : key === 'codex'
             ? 'none'
             : (account.hasWebToken ? 'active' : 'none'),

@@ -85,6 +85,13 @@ export class KimiProvider implements Provider {
     try {
       // 解码 JWT 提取请求头参数
       const jwt = decodeJwtPayload(token);
+
+      // sub 为空说明不是真实用户登录，直接视为未登录
+      if (!jwt.sub || (typeof jwt.sub === 'string' && jwt.sub.trim() === '')) {
+        console.log(`[Kimi] Token has no sub field (anonymous), returning TOKEN_EXPIRED`);
+        return { used: 0, total: 0, expiresAt: '', error: TOKEN_EXPIRED, details: { quotas: [] } };
+      }
+
       const deviceId = jwt.device_id || '';
       const sessionId = jwt.ssid || '';
       const trafficId = jwt.sub || '';

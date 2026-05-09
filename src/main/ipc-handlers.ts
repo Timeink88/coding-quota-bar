@@ -26,6 +26,21 @@ import { checkForUpdate, downloadUpdate, getUpdateStatus } from './update-manage
 let _getConfigManager: () => ConfigManager | null = () => null;
 let _getScheduler: () => Scheduler | null = () => null;
 
+/**
+ * 解码 JWT 检查过期状态（用于渲染进程脱敏传递）
+ */
+function checkJwtExpiry(token: string): 'active' | 'expired' | 'none' {
+  try {
+    const payload = JSON.parse(Buffer.from(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf-8'));
+    if (typeof payload.exp === 'number' && payload.exp < Math.floor(Date.now() / 1000)) {
+      return 'expired';
+    }
+    return 'active';
+  } catch {
+    return 'none';
+  }
+}
+
 export function setIpcHandlersDeps(deps: {
   getConfigManager: () => ConfigManager | null;
   getScheduler: () => Scheduler | null;
@@ -78,7 +93,7 @@ export function setupIpcHandlers(): void {
     const config = _getConfigManager()?.getConfig();
     if (!config) return null;
     const sanitized = JSON.parse(JSON.stringify(config)) as typeof config;
-    for (const provider of Object.values(sanitized.providers)) {
+    for (const [providerKey, provider] of Object.entries(sanitized.providers)) {
       const accounts = (provider as any).accounts;
       if (!Array.isArray(accounts)) continue;
       for (const account of accounts) {
@@ -87,7 +102,12 @@ export function setupIpcHandlers(): void {
         } else if (account.apiKey) {
           account.apiKey = '*'.repeat(account.apiKey.length);
         }
-        (account as any).hasWebToken = !!(account as any).webToken;
+        const webToken = (account as any).webToken;
+        (account as any).hasWebToken = !!webToken;
+        // Kimi: 解码 JWT 检查 token 状态传给渲染进程
+        if (providerKey === 'kimi') {
+          (account as any).kimiTokenStatus = webToken ? checkJwtExpiry(webToken) : 'none';
+        }
         delete (account as any).webToken;
         delete (account as any).webUserAgent;
       }
