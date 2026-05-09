@@ -104,6 +104,15 @@ export function kimiWebLogin(accountId: string): Promise<{ success: boolean; err
       win.setMenuBarVisibility(false);
       loginWindows.set(accountId, win);
 
+      // 屏蔽无关请求（火山引擎统计、百度统计），避免 SSL 错误噪音
+      win.webContents.session.webRequest.onBeforeRequest((details, callback) => {
+        if (details.url.includes('gator.volces.com') || details.url.includes('hm.baidu.com')) {
+          callback({ cancel: true });
+        } else {
+          callback({});
+        }
+      });
+
       // 限制导航：只允许 Kimi 及其相关域名
       const allowedOrigins = [
         'https://www.kimi.com',
