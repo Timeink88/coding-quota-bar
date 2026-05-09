@@ -16,6 +16,7 @@ import {
   destroyPopupWindow,
   getPopupWindow,
   isPopupVisibleNow,
+  resetPopupPosition,
 } from './popup-manager';
 import {
   setUpdateManagerDeps,
@@ -115,6 +116,9 @@ async function initialize(): Promise<void> {
     },
     onCheckUpdate: () => {
       openSettings({ checkUpdate: true });
+    },
+    onResetPopupPosition: () => {
+      resetPopupPosition();
     },
     onQuit: () => {
       app.quit();
