@@ -57,6 +57,25 @@ const isDev = process.env.CQB_DEV === '1';
 const mockUpdate = process.env.CQB_MOCK_UPDATE === '1';
 console.log('[App] DEV mode:', isDev, '| Mock update:', mockUpdate);
 
+// 单实例锁：仅打包版生效，开发版允许多实例（安装版+开发版+worktree 可并存）
+if (app.isPackaged) {
+  const gotTheLock = app.requestSingleInstanceLock();
+  if (!gotTheLock) {
+    console.log('[App] Another instance is already running, exiting');
+    app.exit(0);
+  } else {
+    app.on('second-instance', () => {
+      console.log('[App] Second instance detected, focusing existing window');
+      const popup = getPopupWindow();
+      if (popup && !popup.isDestroyed() && popup.isVisible()) {
+        popup.focus();
+      } else {
+        onTrayClick();
+      }
+    });
+  }
+}
+
 // 全局模块实例
 let trayManager: TrayManager | null = null;
 let configManager: ConfigManager | null = null;
