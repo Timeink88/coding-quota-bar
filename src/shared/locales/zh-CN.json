@@ -52,7 +52,8 @@
     "ttCacheMiss": "输入",
     "ttOutput": "输出",
     "ttRequests": "请求次数",
-    "monthFormat": "{year}年{month}月"
+    "monthFormat": "{year}年{month}月",
+    "noUsageData": "本月还未产生使用数据"
   },
   "settings": {
     "title": "设置",

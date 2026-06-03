@@ -52,7 +52,8 @@
     "ttCacheMiss": "Input",
     "ttOutput": "Output",
     "ttRequests": "Requests",
-    "monthFormat": "{month}/{year}"
+    "monthFormat": "{month}/{year}",
+    "noUsageData": "No usage data for this month"
   },
   "settings": {
     "title": "Settings",

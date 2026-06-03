@@ -11,7 +11,7 @@
     </div>
   </div>
   <!-- 网页登录模式：每月用量（费用 + Token） -->
-  <div v-if="hasModelHistory" class="usage-stats">
+  <div class="usage-stats">
     <div class="stats-tabs-row">
       <span class="chart-title">{{ $t('main.monthlyUsage') }}</span>
       <div class="month-selector">
@@ -22,29 +22,31 @@
     </div>
     <div v-if="loading" class="chart-loading">...</div>
     <template v-else>
-      <!-- 费用统计图表 -->
-      <div v-if="hasCostData" class="model-chart-card">
-        <div class="model-header">
-          <span class="model-name">{{ t('main.costStats') }}</span>
-          <span v-if="monthlyCost > 0 || monthlyUsage > 0" class="monthly-stats">
-            <span v-if="monthlyUsage > 0" class="monthly-tokens">{{ formatCount(monthlyUsage) }}</span>
-            <span v-if="monthlyCost > 0" class="monthly-cost">{{ cs }} {{ monthlyCost.toFixed(2) }}</span>
-          </span>
+      <template v-if="hasChartData">
+        <!-- 费用统计图表 -->
+        <div v-if="hasCostData" class="model-chart-card">
+          <div class="model-header">
+            <span class="model-name">{{ t('main.costStats') }}</span>
+            <span v-if="monthlyCost > 0 || monthlyUsage > 0" class="monthly-stats">
+              <span v-if="monthlyUsage > 0" class="monthly-tokens">{{ formatCount(monthlyUsage) }}</span>
+              <span v-if="monthlyCost > 0" class="monthly-cost">{{ cs }} {{ monthlyCost.toFixed(2) }}</span>
+            </span>
+          </div>
+          <div class="cost-chart-wrapper">
+            <Bar :data="costChartData" :options="costChartOpts" />
+          </div>
         </div>
-        <div class="cost-chart-wrapper">
-          <Bar :data="costChartData" :options="costChartOpts" />
+        <!-- 按模型展示 Token 图表 -->
+        <div v-for="mg in modelGroups" :key="mg.name" class="model-chart-card">
+          <div class="model-header">
+            <span class="model-name">{{ mg.name }}</span>
+          </div>
+          <div class="model-chart-wrapper">
+            <Bar :data="mg.chartData" :options="getChartOpts(mg)" />
+          </div>
         </div>
-      </div>
-      <!-- 按模型展示 Token 图表 -->
-      <div v-for="mg in modelGroups" :key="mg.name" class="model-chart-card">
-        <div class="model-header">
-          <span class="model-name">{{ mg.name }}</span>
-        </div>
-        <div class="model-chart-wrapper">
-          <Bar :data="mg.chartData" :options="getChartOpts(mg)" />
-        </div>
-      </div>
-      <div v-if="modelGroups.length === 0" class="no-data">No data</div>
+      </template>
+      <div v-else class="no-data">{{ $t('main.noUsageData') }}</div>
     </template>
   </div>
 </template>
@@ -454,10 +456,8 @@ const monthlyUsage = computed(() => {
   return q?.used ?? 0
 })
 
-const hasModelHistory = computed(() =>
-  props.account.modelHistory1d.length > 0 ||
-  props.account.modelHistory7d.length > 0 ||
-  props.account.modelHistory30d.length > 0
+const hasChartData = computed(() =>
+  modelGroups.value.length > 0 || hasCostData.value
 )
 
 const COST_MODEL_COLORS: Record<string, string> = {
