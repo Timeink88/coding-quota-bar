@@ -361,14 +361,14 @@ export class DeepSeekProvider implements Provider {
         this.httpClient.getJson<InternalApiData<{ total: UsageAmountDayEntry[]; days: UsageAmountDayEntry[] }>>(
           `${baseUrl}/api/v0/usage/amount?month=${month}&year=${year}`, headers
         ),
-        this.httpClient.getJson<InternalApiData<{ total: UsageCostDayEntry[]; days: UsageCostDayEntry[] }>>(
+        this.httpClient.getJson<InternalApiData<{ total: UsageCostDayEntry[]; days: UsageCostDayEntry[] }[]>>(
           `${baseUrl}/api/v0/usage/cost?month=${month}&year=${year}`, headers
         ),
       ]);
       checkExpired(amountResp.code);
       checkExpired(costResp.code);
       amountData = amountResp.data?.biz_data;
-      costData = costResp.data?.biz_data?.[0]; // cost returns an array with one element
+      costData = costResp.data?.biz_data?.[0];
     } catch (e) {
       if (e instanceof Error && e.message === TOKEN_EXPIRED) throw e;
       console.warn('[DeepSeek] Failed to fetch usage amount/cost:', e);
@@ -488,7 +488,7 @@ export class DeepSeekProvider implements Provider {
       this.httpClient.getJson<InternalApiData<{ total: UsageAmountDayEntry[]; days: UsageAmountDayEntry[] }>>(
         `${baseUrl}/api/v0/usage/amount?month=${month}&year=${year}`, headers
       ),
-      this.httpClient.getJson<InternalApiData<UsageCostDayEntry[]>>(
+      this.httpClient.getJson<InternalApiData<{ total: UsageCostDayEntry[]; days: UsageCostDayEntry[] }[]>>(
         `${baseUrl}/api/v0/usage/cost?month=${month}&year=${year}`, headers
       ),
     ]);
