@@ -153,6 +153,8 @@
     "mimoMonthlyUsage": "本月用量",
     "mimoCompensation": "补偿额度",
     "mimoTokenUsage": "Token 用量",
+    "mimoEstimateTitle": "Token 估算",
+    "mimoEstimateFormula": "按 {cache} 缓存命中 + {miss} 缓存未命中 + {output} 输出 的加权单价估算",
     "mimoInputToken": "输入",
     "mimoOutputToken": "输出",
     "mimoCacheToken": "缓存",

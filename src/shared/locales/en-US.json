@@ -153,6 +153,8 @@
     "mimoMonthlyUsage": "Monthly Usage",
     "mimoCompensation": "Compensation",
     "mimoTokenUsage": "Token Usage",
+    "mimoEstimateTitle": "Token Estimate",
+    "mimoEstimateFormula": "Estimated by weighted unit price: {cache} cache hit + {miss} cache miss + {output} output",
     "mimoInputToken": "Input",
     "mimoOutputToken": "Output",
     "mimoCacheToken": "Cache",

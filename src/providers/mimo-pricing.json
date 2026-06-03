@@ -1,7 +1,7 @@
 {
-  "description": "MiMo Token Plan 模型定价（Credits/百万token），来源：https://platform.xiaomimimo.com/docs/zh-CN/price/tokenplan/subscription",
+  "description": "MiMo Token Plan 模型定价（每个 Token 对应的 Credits 扣除额度），来源：https://platform.xiaomimimo.com/docs/zh-CN/price/tokenplan/subscription",
   "updatedAt": "2026-06-03",
-  "unit": "Credits/1M tokens",
+  "unit": "Credits/token",
   "models": {
     "mimo-v2.5-pro":      { "cacheHit": 2.5,  "cacheMiss": 300, "output": 600 },
     "mimo-v2.5":          { "cacheHit": 2,    "cacheMiss": 100, "output": 200 },
