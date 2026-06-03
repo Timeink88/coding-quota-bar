@@ -1,0 +1,20 @@
+{
+  "description": "MiMo Token Plan 模型定价（Credits/百万token），来源：https://platform.xiaomimimo.com/docs/zh-CN/price/tokenplan/subscription",
+  "updatedAt": "2026-06-03",
+  "unit": "Credits/1M tokens",
+  "models": {
+    "mimo-v2.5-pro":      { "cacheHit": 2.5,  "cacheMiss": 300, "output": 600 },
+    "mimo-v2.5":          { "cacheHit": 2,    "cacheMiss": 100, "output": 200 },
+    "mimo-v2-pro":        { "cacheHit": 2.5,  "cacheMiss": 300, "output": 600, "note": "2026.6.30 下线，已转发至 v2.5-pro" },
+    "mimo-v2-omni":       { "cacheHit": 2,    "cacheMiss": 100, "output": 200, "note": "2026.6.30 下线，已转发至 v2.5" }
+  },
+  "asr": {
+    "mimo-v2.5-asr": { "unit": "Credits/hour", "price": 30000000, "note": "30M Credits/小时" }
+  },
+  "tts": {
+    "note": "TTS 系列模型限时免费，不消耗套餐 Credit"
+  },
+  "discounts": {
+    "nightRate": { "hours": "0:00-8:00 (UTC+8)", "multiplier": 0.8, "description": "非高峰期 0.8x 消耗系数" }
+  }
+}
