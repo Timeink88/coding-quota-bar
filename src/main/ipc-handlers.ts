@@ -5,6 +5,7 @@ import type { Scheduler } from './scheduler';
 import type { ConcurrencyTestConfig, ProviderTypeConfig } from '../shared/types';
 import { ConcurrencyTestEngine } from './concurrency-test';
 import { DeepSeekProvider } from '../providers/deepseek';
+import { MiMoProvider } from '../providers/mimo';
 import { getAvailableProviderKeys } from './loader';
 import { buildUsageData } from './data-transform';
 import {
@@ -214,5 +215,20 @@ export function setupIpcHandlers(): void {
   // MiMo 网页登出
   ipcMain.handle('mimo-web-logout', async (_, accountId: string) => {
     await mimoWebLogout(accountId);
+  });
+
+  // MiMo 按月获取模型历史数据
+  ipcMain.handle('mimo-fetch-month-usage', async (_, accountId: string, year: number, month: number) => {
+    const scheduler = _getScheduler() as any;
+    const loaded = scheduler?.providers as import('./loader').LoadedProvider[] | undefined;
+    if (!loaded) return [];
+    const provider = loaded.find((p: any) => p.accountId === accountId && p.instance instanceof MiMoProvider);
+    if (!provider) return [];
+    try {
+      return await (provider.instance as MiMoProvider).fetchMonthModelHistory(provider.config, month, year);
+    } catch (e) {
+      console.warn('[MiMo] Failed to fetch month usage:', e);
+      return [];
+    }
   });
 }

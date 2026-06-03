@@ -44,21 +44,45 @@
     />
   </div>
 
-  <!-- 按月 Token 用量图表 -->
-  <div v-if="hasModelHistory" class="usage-stats">
+  <!-- 每月用量 -->
+  <div class="usage-stats">
     <div class="stats-tabs-row">
-      <span class="chart-title">{{ t('quota.mimoTokenUsage') }}</span>
-    </div>
-    <div class="model-chart-card">
-      <div class="model-chart-wrapper">
-        <Bar :data="chartData" :options="chartOpts" />
+      <span class="chart-title">{{ t('main.monthlyUsage') }}</span>
+      <div class="month-selector">
+        <select class="month-select" :value="monthValue" @change="onMonthChange">
+          <option v-for="m in monthOptions" :key="m.value" :value="m.value">{{ m.label }}</option>
+        </select>
       </div>
     </div>
+    <div v-if="loading" class="chart-loading">...</div>
+    <template v-else>
+      <template v-if="hasChartData">
+        <!-- Token 总消耗 -->
+        <div class="model-chart-card">
+          <div class="model-header">
+            <span class="model-name">{{ t('quota.mimoTokenUsage') }}</span>
+          </div>
+          <div class="model-chart-wrapper">
+            <Bar :data="tokenChartData" :options="tokenChartOpts" />
+          </div>
+        </div>
+        <!-- 请求次数 -->
+        <div class="model-chart-card">
+          <div class="model-header">
+            <span class="model-name">{{ t('main.ttRequests') }}</span>
+          </div>
+          <div class="model-chart-wrapper">
+            <Bar :data="requestsChartData" :options="requestsChartOpts" />
+          </div>
+        </div>
+      </template>
+      <div v-else class="no-data">{{ $t('main.noUsageData') }}</div>
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Bar } from 'vue-chartjs'
 import {
@@ -66,16 +90,13 @@ import {
   CategoryScale,
   LinearScale,
   BarElement,
-  LineElement,
-  PointElement,
   Tooltip,
-  Filler
 } from 'chart.js'
 import QuotaCard from './QuotaCard.vue'
 import type { AccountUsageData, ModelTokenRecord } from '../types'
 import { useTheme } from '../composables/useTheme'
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Tooltip, Filler)
+ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip)
 
 const { t, locale } = useI18n()
 const { isDark } = useTheme()
@@ -89,8 +110,6 @@ const monthlyQuota = computed(() =>
 const compensationQuotas = computed(() =>
   props.account.quotas.filter(q => q.label === 'quota.mimoCompensation')
 )
-
-const hasModelHistory = computed(() => props.account.modelHistory30d.length > 0)
 
 const currencySymbol = computed(() => {
   const c = props.account.balance?.currency ?? props.account.currency
@@ -113,15 +132,6 @@ function formatCount(n: number): string {
   return `${n}`
 }
 
-function formatDate(iso: string): string {
-  try {
-    const d = new Date(iso)
-    return d.toLocaleDateString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit' })
-  } catch {
-    return iso
-  }
-}
-
 function formatReset(iso: string): string {
   if (!iso) return ''
   try {
@@ -135,7 +145,99 @@ function formatReset(iso: string): string {
   } catch { return '' }
 }
 
-// 按月图表：每天一根堆叠柱子（Cache Hit / Cache Miss / Output）+ Requests 折线
+// ===== 月份选择器 =====
+const STORAGE_KEY_MONTH = 'mimo-selected-month'
+
+function restoreMonth(): { year: number; month: number } {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY_MONTH)
+    if (saved) {
+      const [y, m] = saved.split('-').map(Number)
+      if (y > 2020 && m >= 1 && m <= 12) return { year: y, month: m }
+    }
+  } catch {}
+  const now = new Date()
+  return { year: now.getFullYear(), month: now.getMonth() + 1 }
+}
+
+const restored = restoreMonth()
+const selectedYear = ref(restored.year)
+const selectedMonth = ref(restored.month)
+const loading = ref(false)
+
+const monthValue = computed(() => `${selectedYear.value}-${String(selectedMonth.value).padStart(2, '0')}`)
+
+function saveSelectedMonth() {
+  localStorage.setItem(STORAGE_KEY_MONTH, `${selectedYear.value}-${selectedMonth.value}`)
+}
+
+const monthOptions = computed(() => {
+  const n = new Date()
+  const options: { value: string; label: string }[] = []
+  let y = n.getFullYear(), m = n.getMonth() + 1
+  for (let i = 0; i < 12; i++) {
+    const mm = String(m).padStart(2, '0')
+    options.push({ value: `${y}-${mm}`, label: t('main.monthFormat', { year: y, month: mm }) })
+    m--
+    if (m === 0) { m = 12; y-- }
+  }
+  return options
+})
+
+const isCurrentMonth = computed(() => {
+  const n = new Date()
+  return selectedYear.value === n.getFullYear() && selectedMonth.value === n.getMonth() + 1
+})
+
+// ===== 月度数据 =====
+const monthRecords = ref<ModelTokenRecord[]>([])
+
+function loadData() {
+  if (isCurrentMonth.value) {
+    monthRecords.value = props.account.modelHistory30d
+  } else {
+    monthRecords.value = []
+    fetchMonthData()
+  }
+}
+
+async function fetchMonthData() {
+  if (isCurrentMonth.value) {
+    monthRecords.value = props.account.modelHistory30d
+    return
+  }
+  loading.value = true
+  try {
+    const result = await window.electronAPI.mimoFetchMonthUsage(
+      props.account.id, selectedYear.value, selectedMonth.value
+    )
+    monthRecords.value = result || []
+  } catch (e) {
+    console.warn('[MiMoSection] Failed to fetch month data:', e)
+    monthRecords.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
+async function onMonthChange(e: Event) {
+  const val = (e.target as HTMLSelectElement).value
+  const [y, m] = val.split('-').map(Number)
+  selectedYear.value = y
+  selectedMonth.value = m
+  saveSelectedMonth()
+  await fetchMonthData()
+}
+
+onMounted(loadData)
+
+watch(() => props.account.modelHistory30d, (newData) => {
+  if (isCurrentMonth.value) {
+    monthRecords.value = newData
+  }
+})
+
+// ===== 图表数据 =====
 interface DayDetail {
   cacheHit: number
   cacheMiss: number
@@ -143,23 +245,24 @@ interface DayDetail {
   requests: number
 }
 
-const now = new Date()
-const year = now.getFullYear()
-const month = now.getMonth() + 1
-const lastDay = now.getDate()
-
-const dayLabels: string[] = []
-const dayKeys: string[] = []
-const monthStr = String(month).padStart(2, '0')
-for (let d = 1; d <= lastDay; d++) {
-  const ds = String(d).padStart(2, '0')
-  dayKeys.push(`${year}-${monthStr}-${ds}`)
-  dayLabels.push(ds)
-}
+const chartDays = computed(() => {
+  const y = selectedYear.value
+  const m = selectedMonth.value
+  const lastDay = new Date(y, m, 0).getDate()
+  const monthStr = String(m).padStart(2, '0')
+  const keys: string[] = []
+  const labels: string[] = []
+  for (let d = 1; d <= lastDay; d++) {
+    const ds = String(d).padStart(2, '0')
+    keys.push(`${y}-${monthStr}-${ds}`)
+    labels.push(ds)
+  }
+  return { keys, labels }
+})
 
 const dayMap = computed(() => {
   const map = new Map<string, DayDetail>()
-  for (const r of props.account.modelHistory30d) {
+  for (const r of monthRecords.value) {
     const day = r.date.slice(0, 10)
     const existing = map.get(day) || { cacheHit: 0, cacheMiss: 0, output: 0, requests: 0 }
     existing.cacheHit += r.cacheHitTokens ?? 0
@@ -171,69 +274,43 @@ const dayMap = computed(() => {
   return map
 })
 
-const cacheHitArr = computed(() => dayKeys.map(k => dayMap.value.get(k)?.cacheHit ?? 0))
-const cacheMissArr = computed(() => dayKeys.map(k => dayMap.value.get(k)?.cacheMiss ?? 0))
-const outputArr = computed(() => dayKeys.map(k => dayMap.value.get(k)?.output ?? 0))
-const requestsArr = computed(() => dayKeys.map(k => dayMap.value.get(k)?.requests ?? 0))
+const hasChartData = computed(() => monthRecords.value.length > 0)
 
-const chartData = computed(() => ({
-  labels: dayLabels,
+// Token 总消耗图表
+const tokenChartData = computed(() => ({
+  labels: chartDays.value.labels,
   datasets: [
     {
-      type: 'bar' as const,
       label: t('main.ttCacheHit'),
-      data: cacheHitArr.value,
+      data: chartDays.value.keys.map(k => dayMap.value.get(k)?.cacheHit ?? 0),
       backgroundColor: '#A0DCFD',
       hoverBackgroundColor: '#A0DCFD',
       borderRadius: 2,
       borderSkipped: false,
-      yAxisID: 'y',
       stack: 'tokens',
-      order: 4,
     },
     {
-      type: 'bar' as const,
       label: t('main.ttCacheMiss'),
-      data: cacheMissArr.value,
+      data: chartDays.value.keys.map(k => dayMap.value.get(k)?.cacheMiss ?? 0),
       backgroundColor: '#60B3FE',
       hoverBackgroundColor: '#60B3FE',
       borderRadius: 0,
       borderSkipped: false,
-      yAxisID: 'y',
       stack: 'tokens',
-      order: 3,
     },
     {
-      type: 'bar' as const,
       label: t('main.ttOutput'),
-      data: outputArr.value,
+      data: chartDays.value.keys.map(k => dayMap.value.get(k)?.output ?? 0),
       backgroundColor: '#0C70F3',
       hoverBackgroundColor: '#0C70F3',
       borderRadius: 0,
       borderSkipped: false,
-      yAxisID: 'y',
       stack: 'tokens',
-      order: 2,
-    },
-    {
-      type: 'line' as const,
-      label: 'Requests',
-      data: requestsArr.value,
-      borderColor: 'rgba(16, 185, 129, 0.45)',
-      backgroundColor: 'rgba(16, 185, 129, 0.15)',
-      pointRadius: 0,
-      pointHoverRadius: 0,
-      borderWidth: 1.5,
-      borderDash: [4, 3],
-      tension: 0.3,
-      fill: false,
-      yAxisID: 'y1',
-      order: 1,
     },
   ],
 }))
 
-const chartOpts = computed(() => ({
+const tokenChartOpts = computed(() => ({
   responsive: true,
   maintainAspectRatio: false,
   interaction: { mode: 'index' as const, intersect: false },
@@ -247,28 +324,79 @@ const chartOpts = computed(() => ({
       cornerRadius: 4,
       bodyFont: { size: 11 },
       titleFont: { size: 11, weight: 'bold' as const },
-      footerFont: { size: 11, weight: 'bold' as const },
       caretSize: 6,
       caretPadding: 4,
-      itemSort: (a: any, b: any) => a.datasetIndex - b.datasetIndex,
       callbacks: {
         title(items: any) {
           const idx = items[0]?.dataIndex
           if (idx == null) return ''
-          const dayKey = dayKeys[idx]
+          const dayKey = chartDays.value.keys[idx]
           const detail = dayMap.value.get(dayKey)
           const total = (detail?.cacheHit ?? 0) + (detail?.cacheMiss ?? 0) + (detail?.output ?? 0)
           return `${dayKey}    ${formatCount(total)}`
         },
         label(ctx: any) {
-          if (ctx.dataset.type === 'line') return null
           return `${ctx.dataset.label}: ${formatCount(ctx.raw)}`
         },
-        footer(items: any[]) {
+      },
+    },
+  },
+  scales: {
+    x: {
+      stacked: true,
+      ticks: { color: isDark.value ? '#666' : '#999', font: { size: 8 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 10 },
+      grid: { display: false },
+      border: { display: false },
+    },
+    y: {
+      stacked: true,
+      ticks: { color: isDark.value ? '#666' : '#999', font: { size: 8 }, callback: (v: number) => formatCount(v), maxTicksLimit: 4 },
+      grid: { color: isDark.value ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)' },
+      border: { display: false },
+    },
+  },
+  layout: { padding: { top: 2, bottom: 0, left: 0, right: 0 } },
+}))
+
+// 请求次数图表
+const requestsChartData = computed(() => ({
+  labels: chartDays.value.labels,
+  datasets: [
+    {
+      label: t('main.ttRequests'),
+      data: chartDays.value.keys.map(k => dayMap.value.get(k)?.requests ?? 0),
+      backgroundColor: 'rgba(16, 185, 129, 0.6)',
+      hoverBackgroundColor: 'rgba(16, 185, 129, 0.8)',
+      borderRadius: 2,
+      borderSkipped: false,
+    },
+  ],
+}))
+
+const requestsChartOpts = computed(() => ({
+  responsive: true,
+  maintainAspectRatio: false,
+  interaction: { mode: 'index' as const, intersect: false },
+  plugins: {
+    legend: { display: false },
+    tooltip: {
+      backgroundColor: isDark.value ? 'rgba(40,40,40,0.92)' : 'rgba(0,0,0,0.8)',
+      titleColor: isDark.value ? '#e0e0e0' : '#fff',
+      bodyColor: isDark.value ? '#ccc' : '#fff',
+      padding: 8,
+      cornerRadius: 4,
+      bodyFont: { size: 11 },
+      titleFont: { size: 11, weight: 'bold' as const },
+      caretSize: 6,
+      caretPadding: 4,
+      callbacks: {
+        title(items: any) {
           const idx = items[0]?.dataIndex
-          const dayKey = idx != null ? dayKeys[idx] : ''
-          const detail = dayMap.value.get(dayKey)
-          return `${t('main.ttRequests')}: ${detail?.requests ?? 0}`
+          if (idx == null) return ''
+          return chartDays.value.keys[idx]
+        },
+        label(ctx: any) {
+          return `${ctx.raw}`
         },
       },
     },
@@ -280,16 +408,8 @@ const chartOpts = computed(() => ({
       border: { display: false },
     },
     y: {
-      position: 'left' as const,
-      stacked: true,
-      ticks: { color: isDark.value ? '#666' : '#999', font: { size: 8 }, callback: (v: number) => formatCount(v), maxTicksLimit: 4 },
+      ticks: { color: isDark.value ? '#666' : '#999', font: { size: 8 }, maxTicksLimit: 4 },
       grid: { color: isDark.value ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)' },
-      border: { display: false },
-    },
-    y1: {
-      display: false,
-      position: 'right' as const,
-      grid: { display: false },
       border: { display: false },
     },
   },
@@ -423,12 +543,59 @@ const chartOpts = computed(() => ({
   color: var(--text-heading);
 }
 
+.month-selector {
+  display: flex;
+  align-items: center;
+}
+
+.month-select {
+  font-size: 11px;
+  padding: 2px 4px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  cursor: pointer;
+  outline: none;
+}
+
+.month-select:focus {
+  border-color: var(--border-active);
+}
+
 .model-chart-card {
   padding: 6px 0;
+}
+
+.model-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 2px;
+}
+
+.model-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
 }
 
 .model-chart-wrapper {
   height: 120px;
   width: 100%;
+}
+
+.no-data {
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  padding: 20px 0;
+}
+
+.chart-loading {
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  padding: 20px 0;
 }
 </style>

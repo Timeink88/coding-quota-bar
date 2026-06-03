@@ -175,7 +175,7 @@ export class MiMoProvider implements Provider {
       const [detailResp, usageResp, dailyResp, balanceResp] = await Promise.all([
         fetchApiInPage<MiMoDetailData>(win, '/api/v1/tokenPlan/detail'),
         fetchApiInPage<MiMoUsageData>(win, '/api/v1/tokenPlan/usage'),
-        postApiInPage<MiMoUsageDailyItem[]>(win, '/api/v1/usage/detail/list', {
+        postApiInPage<MiMoUsageDailyItem[]>(win, '/api/v1/usage/token-plan/list', {
           year: now.getFullYear(),
           month: now.getMonth() + 1,
         }).catch(() => null),
@@ -267,5 +267,29 @@ export class MiMoProvider implements Provider {
       level: planLevel,
       details,
     };
+  }
+
+  /** 按月获取模型 token 历史（供 IPC 按需调用） */
+  async fetchMonthModelHistory(config: ProviderConfig, month: number, year: number): Promise<import('../shared/types').ModelTokenRecord[]> {
+    const accountId = config.accountId!;
+    let win: BrowserWindow | null = null;
+    try {
+      win = await createLoadedWindow(accountId);
+      const resp = await postApiInPage<MiMoUsageDailyItem[]>(win, '/api/v1/usage/token-plan/list', { year, month });
+      if (resp.code !== 0 || !Array.isArray(resp.data)) return [];
+      return resp.data.map(item => ({
+        date: item.date,
+        model: item.model,
+        used: item.totalToken,
+        requests: item.requestCount,
+        cacheHitTokens: item.inputHitToken,
+        cacheMissTokens: item.inputMissToken,
+        responseTokens: item.outputToken,
+      }));
+    } catch {
+      return [];
+    } finally {
+      if (win && !win.isDestroyed()) win.destroy();
+    }
   }
 }

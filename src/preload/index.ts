@@ -201,4 +201,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onMimoWebLoginSuccess: (callback: (accountId: string) => void) => {
     ipcRenderer.on('mimo-web-login-success', (_, accountId) => callback(accountId));
   },
+
+  /**
+   * MiMo 按月获取模型历史数据
+   */
+  mimoFetchMonthUsage: (accountId: string, year: number, month: number) =>
+    ipcRenderer.invoke('mimo-fetch-month-usage', accountId, year, month),
 });
