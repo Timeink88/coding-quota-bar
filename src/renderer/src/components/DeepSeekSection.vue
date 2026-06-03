@@ -96,7 +96,18 @@ function saveSelectedMonth() {
   try { localStorage.setItem(STORAGE_KEY_MONTH, `${selectedYear.value}-${selectedMonth.value}`) } catch {}
 }
 
-onMounted(async () => {
+// 图表数据同步赋值，不阻塞渲染
+function loadChartData() {
+  if (isCurrentMonth.value) {
+    monthRecords.value = props.account.modelHistory30d
+    monthCostRecords.value = props.account.modelCostHistory30d
+  } else {
+    fetchMonthData()
+  }
+}
+
+// budget 异步读取，不阻塞图表
+async function loadBudget() {
   const config = await window.electronAPI.getConfig()
   if (config?.providers?.deepseek) {
     const acc = config.providers.deepseek.accounts?.find((a: any) => a.id === props.account.id)
@@ -104,12 +115,11 @@ onMounted(async () => {
       budget.value = (acc as any).budget
     }
   }
-  if (isCurrentMonth.value) {
-    monthRecords.value = props.account.modelHistory30d
-    monthCostRecords.value = props.account.modelCostHistory30d
-  } else {
-    await fetchMonthData()
-  }
+}
+
+onMounted(() => {
+  loadChartData()
+  loadBudget()
 })
 
 const isCurrentMonth = computed(() => {
