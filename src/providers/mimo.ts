@@ -136,6 +136,9 @@ async function createLoadedWindow(accountId: string): Promise<BrowserWindow> {
 export class MiMoProvider implements Provider {
   name = 'MiMo';
 
+  /** 历史月份数据缓存 key: "accountId:YYYY-MM" */
+  private monthCache = new Map<string, import('../shared/types').ModelTokenRecord[]>();
+
   async fetchUsage(config: ProviderConfig): Promise<UsageResult> {
     const accountId = config.accountId!;
     let win: BrowserWindow | null = null;
@@ -269,15 +272,25 @@ export class MiMoProvider implements Provider {
     };
   }
 
-  /** 按月获取模型 token 历史（供 IPC 按需调用） */
+  /** 按月获取模型 token 历史（供 IPC 按需调用），历史月份自动缓存 */
   async fetchMonthModelHistory(config: ProviderConfig, month: number, year: number): Promise<import('../shared/types').ModelTokenRecord[]> {
     const accountId = config.accountId!;
+    const key = `${accountId}:${year}-${String(month).padStart(2, '0')}`;
+
+    // 查缓存
+    const cached = this.monthCache.get(key);
+    if (cached) return cached;
+
+    // 当前月不缓存（数据会变化）
+    const now = new Date();
+    const isCurrent = year === now.getFullYear() && month === now.getMonth() + 1;
+
     let win: BrowserWindow | null = null;
     try {
       win = await createLoadedWindow(accountId);
       const resp = await postApiInPage<MiMoUsageDailyItem[]>(win, '/api/v1/usage/token-plan/list', { year, month });
       if (resp.code !== 0 || !Array.isArray(resp.data)) return [];
-      return resp.data.map(item => ({
+      const records = resp.data.map(item => ({
         date: item.date,
         model: item.model,
         used: item.totalToken,
@@ -286,6 +299,8 @@ export class MiMoProvider implements Provider {
         cacheMissTokens: item.inputMissToken,
         responseTokens: item.outputToken,
       }));
+      if (!isCurrent) this.monthCache.set(key, records);
+      return records;
     } catch {
       return [];
     } finally {
