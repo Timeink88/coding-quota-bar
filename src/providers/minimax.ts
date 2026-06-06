@@ -8,11 +8,17 @@ interface MiniMaxModelRemains {
   current_interval_total_count: number;
   current_interval_usage_count: number;
   model_name: string;
+  current_interval_status: number;
+  current_interval_remaining_percent: number;
   current_weekly_total_count: number;
   current_weekly_usage_count: number;
+  current_weekly_status: number;
+  current_weekly_remaining_percent: number;
   weekly_start_time: number;
   weekly_end_time: number;
   weekly_remains_time: number;
+  interval_boost_permille: number;
+  weekly_boost_permille: number;
 }
 
 interface MiniMaxRemainsResponse {
@@ -28,6 +34,11 @@ function toISODate(ts: number): string {
   const d = new Date(ts);
   return isNaN(d.getTime()) ? '' : d.toISOString();
 }
+
+const MODEL_DISPLAY: Record<string, string> = {
+  general: 'MiniMax',
+  video: 'Video',
+};
 
 export class MiniMaxProvider implements Provider {
   name = 'MiniMax';
@@ -57,55 +68,81 @@ export class MiniMaxProvider implements Provider {
       throw new Error('[MiniMax] No model data returned');
     }
 
-    // 找主指标模型（MiniMax-M*），找不到则用第一个
-    const mainModel = models.find(m => m.model_name === 'MiniMax-M*') || models[0];
+    const mainModel = models.find(m => m.model_name === 'general') || models[0];
 
-    // 构建 quotas：每个模型的日额度（>0 时）+ 周额度（>0 时）
     const quotas: QuotaItem[] = [];
     for (const m of models) {
-      const name = m.model_name;
+      const limitType = MODEL_DISPLAY[m.model_name] || m.model_name;
 
-      // 日额度
-      const dailyUsed = m.current_interval_usage_count;
-      const dailyTotal = m.current_interval_total_count;
-      if (dailyTotal > 0) {
-        quotas.push({
-          label: 'quota.minimaxDaily',
-          used: dailyUsed,
-          total: dailyTotal,
-          usageRate: Math.round((dailyUsed / dailyTotal) * 100),
-          resetAt: toISODate(m.end_time),
-          startAt: toISODate(m.start_time),
-          limitType: name,
-        });
-      }
+      quotas.push(this.buildQuota(
+        m.current_interval_total_count, m.current_interval_usage_count,
+        m.current_interval_remaining_percent, m.current_interval_status,
+        m.interval_boost_permille,
+        'quota.minimaxDaily', 'quota.minimaxDailyUnlimited',
+        toISODate(m.end_time), toISODate(m.start_time), limitType,
+      ));
 
-      // 周额度（>0 时才显示）
-      if (m.current_weekly_total_count > 0) {
-        const weeklyUsed = m.current_weekly_usage_count;
-        const weeklyTotal = m.current_weekly_total_count;
-        quotas.push({
-          label: 'quota.minimaxWeekly',
-          used: weeklyUsed,
-          total: weeklyTotal,
-          usageRate: Math.round((weeklyUsed / weeklyTotal) * 100),
-          resetAt: toISODate(m.weekly_end_time),
-          startAt: toISODate(m.weekly_start_time),
-          limitType: name,
-        });
-      }
+      quotas.push(this.buildQuota(
+        m.current_weekly_total_count, m.current_weekly_usage_count,
+        m.current_weekly_remaining_percent, m.current_weekly_status,
+        m.weekly_boost_permille,
+        'quota.minimaxWeekly', 'quota.minimaxWeeklyUnlimited',
+        toISODate(m.weekly_end_time), toISODate(m.weekly_start_time), limitType,
+      ));
     }
 
-    const used = mainModel.current_interval_usage_count;
-    const total = mainModel.current_interval_total_count;
+    // 百分制：tray calcPercent 用 (total-used)/total，这里 total=100, used=已用百分比
+    const used = 100 - mainModel.current_interval_remaining_percent;
 
     return {
       used,
-      total,
+      total: 100,
       expiresAt: toISODate(mainModel.end_time),
-      details: {
-        quotas,
-      },
+      details: { quotas },
+    };
+  }
+
+  // status: 1=正常有限额度, 3=无限额度; boost: 千分位配额加成(2000=2x), 仅区间且仅 general
+  private buildQuota(
+    total: number, usageCount: number, remainingPercent: number, status: number,
+    boostPermille: number,
+    normalLabel: string, unlimitedLabel: string,
+    resetAt: string, startAt: string, limitType: string,
+  ): QuotaItem {
+    const isUnlimited = status === 3;
+    const usedPercent = Math.max(0, Math.min(100, 100 - remainingPercent));
+
+    if (total > 0) {
+      // 有具体计数（如 video 0/3），不加成
+      return {
+        label: normalLabel,
+        used: usageCount,
+        total,
+        usageRate: usedPercent,
+        resetAt, startAt, limitType,
+      };
+    }
+
+    if (!isUnlimited) {
+      const boostMultiplier = boostPermille / 1000;
+      return {
+        label: normalLabel,
+        labelParams: { boostPermille: String(boostPermille) },
+        used: Math.round(usedPercent * boostMultiplier),
+        total: Math.round(100 * boostMultiplier),
+        usageRate: usedPercent,
+        resetAt, startAt, limitType,
+      };
+    }
+
+    // 无限额度
+    return {
+      label: unlimitedLabel,
+      used: usageCount,
+      total: 0,
+      usageRate: 0,
+      resetAt, startAt, limitType,
+      hideBar: true,
     };
   }
 }
