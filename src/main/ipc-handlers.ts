@@ -6,6 +6,7 @@ import type { ConcurrencyTestConfig, ProviderTypeConfig } from '../shared/types'
 import { ConcurrencyTestEngine } from './concurrency-test';
 import { DeepSeekProvider } from '../providers/deepseek';
 import { MiMoProvider } from '../providers/mimo';
+import { OpenCodeGoProvider } from '../providers/opencodego';
 import { getAvailableProviderKeys } from './loader';
 import { buildUsageData } from './data-transform';
 import {
@@ -21,6 +22,7 @@ import {
 } from './popup-manager';
 import { deepseekWebLogin, deepseekWebLogout } from './deepseek-auth';
 import { mimoWebLogin, mimoWebLogout } from './mimo-auth';
+import { opencodegoWebLogin, opencodegoWebLogout } from './opencodego-auth';
 import { checkForUpdate, downloadUpdate, getUpdateStatus } from './update-manager';
 
 let _getConfigManager: () => ConfigManager | null = () => null;
@@ -230,5 +232,15 @@ export function setupIpcHandlers(): void {
       console.warn('[MiMo] Failed to fetch month usage:', e);
       return [];
     }
+  });
+
+  // OpenCode Go 网页登录
+  ipcMain.handle('opencodego-web-login', async (_, accountId: string) => {
+    return await opencodegoWebLogin(accountId);
+  });
+
+  // OpenCode Go 网页登出
+  ipcMain.handle('opencodego-web-logout', async (_, accountId: string) => {
+    await opencodegoWebLogout(accountId);
   });
 }

@@ -122,7 +122,7 @@
                 <template v-if="getActiveAccount(activeProvider)!.error === 'TOKEN_EXPIRED'">
                   <template v-if="activeProvider.key === 'codex'">{{ $t('main.codexTokenExpired') }}</template>
                   <template v-else>
-                    {{ activeProvider.key === 'mimo' ? $t('main.mimoTokenExpired') : $t('main.deepseekTokenExpired') }}
+                    {{ activeProvider.key === 'mimo' ? $t('main.mimoTokenExpired') : activeProvider.key === 'opencodego' ? $t('main.opencodegoTokenExpired') : $t('main.deepseekTokenExpired') }}
                     <button class="relogin-btn" @click="$emit('open-settings')">{{ $t('main.reloginBtn') }}</button>
                   </template>
                 </template>
@@ -134,6 +134,7 @@
               <MiniMaxSection v-else-if="activeProvider.key === 'minimax'" :account="getActiveAccount(activeProvider)!" />
               <DeepSeekSection v-else-if="activeProvider.key === 'deepseek'" :account="getActiveAccount(activeProvider)!" />
               <MiMoSection v-else-if="activeProvider.key === 'mimo'" :account="getActiveAccount(activeProvider)!" />
+              <OpenCodeGoSection v-else-if="activeProvider.key === 'opencodego'" :account="getActiveAccount(activeProvider)!" />
               <CodexSection v-else-if="activeProvider.key === 'codex'" :account="getActiveAccount(activeProvider)!" />
               <DeepSeekServiceStatus v-if="activeProvider.key === 'deepseek' && !getActiveAccount(activeProvider)!.error" :account="getActiveAccount(activeProvider)!" />
             </template>
@@ -166,6 +167,7 @@ import MiniMaxSection from '../components/MiniMaxSection.vue'
 import DeepSeekSection from '../components/DeepSeekSection.vue'
 import DeepSeekServiceStatus from '../components/DeepSeekServiceStatus.vue'
 import MiMoSection from '../components/MiMoSection.vue'
+import OpenCodeGoSection from '../components/OpenCodeGoSection.vue'
 import CodexSection from '../components/CodexSection.vue'
 import type { ProviderUsageData, AccountUsageData, UsageState } from '../types'
 import { useTheme } from '../composables/useTheme'

@@ -4,6 +4,7 @@ import { MiniMaxProvider } from '../providers/minimax';
 import { KimiProvider } from '../providers/kimi';
 import { DeepSeekProvider } from '../providers/deepseek';
 import { MiMoProvider } from '../providers/mimo';
+import { OpenCodeGoProvider } from '../providers/opencodego';
 import { CodexProvider } from '../providers/codex';
 import buildConfig from '../../app.build';
 
@@ -16,6 +17,7 @@ const PROVIDER_CLASSES = {
   kimi: KimiProvider,
   deepseek: DeepSeekProvider,
   mimo: MiMoProvider,
+  opencodego: OpenCodeGoProvider,
   codex: CodexProvider,
 } as const;
 
@@ -82,8 +84,8 @@ export class ProviderLoader {
         if (authMode === 'apikey' && !account.apiKey?.trim()) {
           continue;
         }
-        // MiMo 使用 Cookie 认证，Codex 读取本地 auth 文件，均不需要 webToken
-        if (authMode === 'weblogin' && type !== 'mimo' && type !== 'codex' && !account.webToken?.trim()) {
+        // MiMo 使用 Cookie 认证，OpenCode Go 使用 Cookie 认证，Codex 读取本地 auth 文件，均不需要 webToken
+        if (authMode === 'weblogin' && type !== 'mimo' && type !== 'opencodego' && type !== 'codex' && !account.webToken?.trim()) {
           continue;
         }
 

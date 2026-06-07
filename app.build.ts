@@ -10,6 +10,7 @@ export default {
     { key: 'deepseek', available: true, envVar: 'DEEPSEEK_API_KEY', baseUrl: 'https://api.deepseek.com', websiteUrl: 'https://platform.deepseek.com/' },
     { key: 'kimi', available: false, envVar: 'KIMI_API_KEY', baseUrl: '', websiteUrl: '' },
     { key: 'mimo', available: true, envVar: '', baseUrl: 'https://platform.xiaomimimo.com', websiteUrl: 'https://platform.xiaomimimo.com/console/plan-manage' },
+    { key: 'opencodego', available: true, envVar: '', baseUrl: 'https://opencode.ai', websiteUrl: 'https://opencode.ai' },
     { key: 'codex', available: true, envVar: '', baseUrl: 'https://chatgpt.com', websiteUrl: 'https://chatgpt.com/' },
   ],
 } as const;

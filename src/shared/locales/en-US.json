@@ -46,6 +46,7 @@
     "updateAvailableBanner": "New version v{version} available, click to view",
     "deepseekTokenExpired": "DeepSeek login expired, please re-login",
     "mimoTokenExpired": "MiMo login expired, please re-login",
+    "opencodegoTokenExpired": "OpenCode Go login expired, please re-login",
     "codexTokenExpired": "Codex CLI auth not found. Please install and login to Codex CLI first",
     "reloginBtn": "Re-login",
     "ttCacheHit": "Cache",
@@ -118,6 +119,7 @@
     "authModeWebloginHint": "Query balance, usage and cost details via web API",
     "webLoginBtn": "Login to DeepSeek",
     "mimoLoginBtn": "Login to MiMo",
+    "opencodegoLoginBtn": "Login to OpenCode Go",
     "webLoginActive": "Logged In",
     "webLogoutBtn": "Log Out",
     "webTokenExpired": "Login expired, click to re-login",
@@ -170,7 +172,11 @@
     "codexCredits": "Credits Balance",
     "codexCreditsUnlimited": "Credits (Unlimited)",
     "codexSubscriptionUntil": "Subscription Until",
-    "codexLimitReached": "Rate limit reached, Codex unavailable"
+    "codexLimitReached": "Rate limit reached, Codex unavailable",
+    "opencodegoRolling": "5-Hour Window",
+    "opencodegoWeekly": "Weekly Quota",
+    "opencodegoMonthly": "Monthly Quota",
+    "opencodegoZenBalance": "Zen Balance"
   },
   "tray": {
     "tooltip": "Coding Quota Bar - AI Usage Monitor",
@@ -189,6 +195,7 @@
     "kimi": "Kimi",
     "deepseek": "DeepSeek",
     "mimo": "MiMo",
+    "opencodego": "OpenCode Go",
     "codex": "Codex"
   },
   "concurrencyTest": {

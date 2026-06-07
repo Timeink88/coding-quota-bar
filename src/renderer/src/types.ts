@@ -240,6 +240,13 @@ export interface ElectronAPI {
   deepseekWebLogout: (accountId: string) => Promise<void>
   onDeepseekWebLoginSuccess: (callback: (accountId: string) => void) => void
   deepseekFetchMonthUsage: (accountId: string, year: number, month: number) => Promise<{ tokens: ModelTokenRecord[]; costs: ModelCostRecord[] }>
+  mimoWebLogin: (accountId: string) => Promise<{ success: boolean; error?: string }>
+  mimoWebLogout: (accountId: string) => Promise<void>
+  onMimoWebLoginSuccess: (callback: (accountId: string) => void) => void
+  mimoFetchMonthUsage: (accountId: string, year: number, month: number) => Promise<ModelTokenRecord[]>
+  opencodegoWebLogin: (accountId: string) => Promise<{ success: boolean; error?: string }>
+  opencodegoWebLogout: (accountId: string) => Promise<void>
+  onOpencodegoWebLoginSuccess: (callback: (accountId: string) => void) => void
 }
 
 declare global {
