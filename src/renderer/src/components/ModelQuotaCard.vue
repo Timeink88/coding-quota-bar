@@ -4,13 +4,16 @@
     <div v-for="(q, i) in quotas" :key="i" class="quota-row">
       <div class="quota-top">
         <span class="quota-range">{{ formatRange(q.startAt, q.resetAt) }}</span>
-        <span class="quota-percent" :class="q.color">{{ Math.round(q.usageRate) }}%</span>
+        <span class="quota-percent" :class="q.color">{{ q.total === 0 ? '∞' : (q.total > 100 || q.labelParams?.boostPermille ? `${q.total - q.used}%` : `${q.total - q.used}`) }}</span>
       </div>
-      <div class="progress-bar">
+      <div v-if="q.total > 0 && !q.hideBar" class="progress-bar">
         <div class="progress-fill" :class="q.color" :style="{ width: q.usageRate + '%' }"></div>
       </div>
       <div class="quota-bottom">
-        <span class="quota-count">{{ q.used }}/{{ q.total }}</span>
+        <span v-if="q.total === 0" class="quota-count quota-unlimited">∞ 无限制</span>
+        <span v-else-if="q.used > 100 || q.total > 100" class="quota-count">{{ q.used }} / {{ q.total }}</span>
+        <span v-else-if="q.labelParams?.boostPermille && Number(q.labelParams.boostPermille) > 1000" class="quota-count">总额度 {{ Math.round(Number(q.labelParams.boostPermille) / 10) }}%，已用 {{ Math.round(q.usageRate * Number(q.labelParams.boostPermille) / 1000) }}%</span>
+        <span v-else class="quota-count">已用 {{ Math.round(q.usageRate) }}%</span>
       </div>
     </div>
   </div>
