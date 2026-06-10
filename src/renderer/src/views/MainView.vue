@@ -99,6 +99,7 @@
               </button>
             </div>
             <div class="provider-name-actions">
+              <span v-if="isPlanExpired(activeProvider)" class="provider-level-expired">{{ $t('main.expired') }}</span>
               <FloatingTooltip v-if="getActiveAccount(activeProvider)?.level" position="bottom" align="right" :rows="getSubRows(getActiveAccount(activeProvider)!.subscription)">
                 <span class="provider-level">{{ getActiveAccount(activeProvider)!.level }}</span>
               </FloatingTooltip>
@@ -240,6 +241,10 @@ function getActiveAccountId(p: ProviderUsageData): string {
 function getActiveAccount(p: ProviderUsageData): AccountUsageData | undefined {
   const id = getActiveAccountId(p)
   return p.accounts.find(a => a.id === id) || p.accounts[0]
+}
+
+function isPlanExpired(p: ProviderUsageData): boolean {
+  return getActiveAccount(p)?.subscription?.status === 'EXPIRED'
 }
 
 function setActiveAccount(p: ProviderUsageData, accountId: string): void {
@@ -545,6 +550,19 @@ onUnmounted(() => {
   padding: 2px 6px;
   border-radius: 8px;
   text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  line-height: 1;
+  cursor: default;
+}
+
+.provider-level-expired {
+  font-size: 10px;
+  font-weight: 600;
+  color: #fff;
+  background: #dc2626;
+  padding: 2px 6px;
+  border-radius: 8px;
   letter-spacing: 0.5px;
   white-space: nowrap;
   line-height: 1;

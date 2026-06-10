@@ -174,21 +174,85 @@ export class MiMoProvider implements Provider {
   private async tryFetch(win: BrowserWindow): Promise<UsageResult | null> {
     if (win.isDestroyed()) return null;
     try {
+      // 先用余额 API 验证登录状态：余额在有套餐和无套餐时都会返回，登录过期则返回 401
+      const balanceResp = await fetchApiInPage<MiMoBalanceData>(win, '/api/v1/balance');
+      if (balanceResp.code !== 0) return null; // 登录过期，触发 reload 重试
+
       const now = new Date();
-      const [detailResp, usageResp, dailyResp, balanceResp] = await Promise.all([
-        fetchApiInPage<MiMoDetailData>(win, '/api/v1/tokenPlan/detail'),
-        fetchApiInPage<MiMoUsageData>(win, '/api/v1/tokenPlan/usage'),
+      const [detailResp, usageResp, dailyResp] = await Promise.all([
+        fetchApiInPage<MiMoDetailData>(win, '/api/v1/tokenPlan/detail').catch(() => null),
+        fetchApiInPage<MiMoUsageData>(win, '/api/v1/tokenPlan/usage').catch(() => null),
         postApiInPage<MiMoUsageDailyItem[]>(win, '/api/v1/usage/token-plan/list', {
           year: now.getFullYear(),
           month: now.getMonth() + 1,
         }).catch(() => null),
-        fetchApiInPage<MiMoBalanceData>(win, '/api/v1/balance').catch(() => null),
       ]);
-      if (detailResp.code !== 0 || usageResp.code !== 0) return null;
-      return this.transformResult(detailResp.data, usageResp.data, dailyResp?.data, balanceResp?.data);
+
+      // 套餐详情和用量都获取成功且数据完整 → 正常返回
+      const usageData = usageResp?.data;
+      if (detailResp && detailResp.code === 0 && usageResp && usageResp.code === 0
+          && usageData?.usage && usageData?.monthUsage) {
+        return this.transformResult(detailResp.data, usageData, dailyResp?.data, balanceResp.data);
+      }
+
+      // 套餐过期/未订阅但余额正常 → 返回余额信息 + 过期套餐详情（如有）+ 日报数据
+      const detailData = detailResp?.code === 0 ? detailResp.data : undefined;
+      return this.buildNoPlanResult(balanceResp.data, detailData, dailyResp?.data);
     } catch {
       return null;
     }
+  }
+
+  /** 无有效套餐时，返回余额信息（附过期的套餐详情和日报数据） */
+  private buildNoPlanResult(balanceData: MiMoBalanceData, detail?: MiMoDetailData, dailyItems?: MiMoUsageDailyItem[]): UsageResult {
+    const planLevel = detail ? (PLAN_LEVEL_MAP[detail.planCode] || detail.planName) : '';
+
+    // 按天聚合每日用量
+    const dailyMap = new Map<string, { cacheHit: number; cacheMiss: number; output: number; requests: number }>();
+    if (dailyItems && Array.isArray(dailyItems)) {
+      for (const item of dailyItems) {
+        const existing = dailyMap.get(item.date) || { cacheHit: 0, cacheMiss: 0, output: 0, requests: 0 };
+        existing.cacheHit += item.inputHitToken;
+        existing.cacheMiss += item.inputMissToken;
+        existing.output += item.outputToken;
+        existing.requests += item.requestCount;
+        dailyMap.set(item.date, existing);
+      }
+    }
+    const modelHistory30d = Array.from(dailyMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, d]) => ({
+        date,
+        model: 'MiMo',
+        used: d.cacheHit + d.cacheMiss + d.output,
+        requests: d.requests,
+        cacheHitTokens: d.cacheHit,
+        cacheMissTokens: d.cacheMiss,
+        responseTokens: d.output,
+      }));
+
+    const details: Record<string, unknown> = {
+      quotas: [],
+      subscription: {
+        plan: planLevel,
+        status: 'EXPIRED',
+        currentRenewTime: '',
+        nextRenewTime: detail?.currentPeriodEnd || '',
+        autoRenew: detail?.enableAutoRenew ?? false,
+        actualPrice: 0,
+        renewPrice: 0,
+        billingCycle: '',
+      },
+      modelHistory30d,
+    };
+    details.balance = {
+      total: balanceData.balance,
+      gift: balanceData.giftBalance,
+      cash: balanceData.cashBalance,
+      frozen: balanceData.frozenBalance,
+      currency: balanceData.currency,
+    };
+    return { used: 0, total: 0, expiresAt: detail?.currentPeriodEnd || '', level: planLevel, details };
   }
 
   private transformResult(
@@ -197,8 +261,8 @@ export class MiMoProvider implements Provider {
     dailyItems?: MiMoUsageDailyItem[],
     balanceData?: MiMoBalanceData,
   ): UsageResult {
-    const planItem = usage.usage.items[0];
-    const monthItem = usage.monthUsage.items[0];
+    const planItem = usage.usage?.items?.[0];
+    const monthItem = usage.monthUsage?.items?.[0];
     const planLevel = PLAN_LEVEL_MAP[detail.planCode] || detail.planName;
     const quotas: QuotaItem[] = [];
 
@@ -207,7 +271,7 @@ export class MiMoProvider implements Provider {
       quotas.push({ label: 'quota.mimoMonthlyUsage', used: monthItem.used, total: monthItem.limit, usageRate: monthItem.percent * 100, resetAt: detail.currentPeriodEnd });
     }
     // 补偿额度（如果有）
-    const compItem = usage.usage.items.find(i => i.name === 'compensation_total_token');
+    const compItem = usage.usage?.items?.find(i => i.name === 'compensation_total_token');
     if (compItem && compItem.limit > 0) {
       quotas.push({ label: 'quota.mimoCompensation', used: compItem.used, total: compItem.limit, usageRate: compItem.percent * 100, resetAt: detail.currentPeriodEnd });
     }

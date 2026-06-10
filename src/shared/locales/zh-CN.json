@@ -54,7 +54,8 @@
     "ttOutput": "输出",
     "ttRequests": "请求次数",
     "monthFormat": "{year}年{month}月",
-    "noUsageData": "本月还未产生使用数据"
+    "noUsageData": "本月还未产生使用数据",
+    "expired": "已过期"
   },
   "settings": {
     "title": "设置",
@@ -166,6 +167,8 @@
     "mimoGiftBalance": "赠送",
     "mimoCashBalance": "现金",
     "mimoFrozenBalance": "冻结",
+    "mimoMonthlyPlan": "月度套餐",
+    "validUntil": "有效期至",
     "codexPrimaryWindow": "主窗口(3h)",
     "codexSecondaryWindow": "次窗口(1d)",
     "codexCodeReview": "代码审查",

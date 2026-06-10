@@ -54,7 +54,8 @@
     "ttOutput": "Output",
     "ttRequests": "Requests",
     "monthFormat": "{month}/{year}",
-    "noUsageData": "No usage data for this month"
+    "noUsageData": "No usage data for this month",
+    "expired": "Expired"
   },
   "settings": {
     "title": "Settings",
@@ -166,6 +167,8 @@
     "mimoGiftBalance": "Gift",
     "mimoCashBalance": "Cash",
     "mimoFrozenBalance": "Frozen",
+    "mimoMonthlyPlan": "Monthly Plan",
+    "validUntil": "Valid until",
     "codexPrimaryWindow": "Primary Window (3h)",
     "codexSecondaryWindow": "Secondary Window (1d)",
     "codexCodeReview": "Code Review",
