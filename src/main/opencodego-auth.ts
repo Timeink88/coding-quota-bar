@@ -137,7 +137,7 @@ export function opencodegoWebLogin(accountId: string): Promise<{ success: boolea
     });
 
     console.log('[OpenCodeGo] Opening login window...');
-    win.loadURL('https://opencode.ai');
+    win.loadURL('https://opencode.ai/auth');
   });
 }
 
