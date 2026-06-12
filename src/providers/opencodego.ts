@@ -211,12 +211,7 @@ export class OpenCodeGoProvider implements Provider {
 
       const workspaceId = await getWorkspaceId(win);
       if (!workspaceId) {
-        // 没有 workspace ID，可能未登录
-        const html = await win.webContents.executeJavaScript(`document.documentElement.outerHTML`);
-        if (isAuthFailure(html)) {
-          return { used: 0, total: 0, expiresAt: '', error: TOKEN_EXPIRED, details: { quotas: [] } };
-        }
-        return { used: 0, total: 0, expiresAt: '', error: 'No workspace found', details: { quotas: [] } };
+        return { used: 0, total: 0, expiresAt: '', error: TOKEN_EXPIRED, details: { quotas: [] } };
       }
 
       console.log(`[OpenCodeGo] Found workspace: ${workspaceId}`);
