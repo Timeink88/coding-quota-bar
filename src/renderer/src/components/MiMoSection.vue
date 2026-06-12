@@ -49,6 +49,8 @@
       :label="q.label"
       :labelParams="q.labelParams"
       :usageRate="q.usageRate"
+      :used="q.used"
+      :total="q.total"
       :resetAt="q.resetAt"
       :color="q.color"
     />

@@ -261,13 +261,16 @@ export class MiMoProvider implements Provider {
     dailyItems?: MiMoUsageDailyItem[],
     balanceData?: MiMoBalanceData,
   ): UsageResult {
-    const planItem = usage.usage?.items?.[0];
+    const planItem = usage.usage?.items?.find(i => i.name === 'plan_total_token');
     const monthItem = usage.monthUsage?.items?.[0];
     const planLevel = PLAN_LEVEL_MAP[detail.planCode] || detail.planName;
     const quotas: QuotaItem[] = [];
 
-    // 本月用量（主指标）
-    if (monthItem) {
+    // 本月用量（主指标，使用 plan_total_token，不含补偿额度消耗）
+    if (planItem) {
+      quotas.push({ label: 'quota.mimoMonthlyUsage', used: planItem.used, total: planItem.limit, usageRate: planItem.percent * 100, resetAt: detail.currentPeriodEnd });
+    } else if (monthItem) {
+      // 降级：无 plan_total_token 时用 month_total_token
       quotas.push({ label: 'quota.mimoMonthlyUsage', used: monthItem.used, total: monthItem.limit, usageRate: monthItem.percent * 100, resetAt: detail.currentPeriodEnd });
     }
     // 补偿额度（如果有）
