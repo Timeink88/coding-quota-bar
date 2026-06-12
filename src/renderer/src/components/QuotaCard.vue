@@ -1,7 +1,8 @@
+<!--改此组件慎重，基础组件，被多个服务商依赖-->
 <template>
   <div class="quota-card">
     <div class="card-top">
-      <span class="quota-label">{{ $t(label, labelParams) }}</span>
+      <span class="quota-label">{{ $t(label, labelParams ?? {}) }}</span>
       <span class="quota-percent" :class="color">{{ Math.round(usageRate) }}%</span>
     </div>
     <div class="progress-bar">

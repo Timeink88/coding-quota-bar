@@ -98,7 +98,7 @@ function dayTitle(offsetFromEnd: number): string {
 }
 
 .svc-name.link:hover {
-  color: var(--color-primary);
+  color: var(--text-primary);
 }
 
 .svc-uptime {

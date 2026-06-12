@@ -366,8 +366,8 @@ const chartOptions = computed(() => ({
       boxWidth: 8,
       boxHeight: 8,
       callbacks: {
-        label: (ctx: { dataset: { label?: string }; parsed: { y: number } }) =>
-          `${ctx.dataset.label}: ${formatCount(ctx.parsed.y)}`
+        label: (ctx: { dataset: { label?: string }; parsed: { y: number | null } }) =>
+          `${ctx.dataset.label}: ${formatCount(ctx.parsed.y ?? 0)}`
       }
     }
   },
@@ -389,7 +389,7 @@ const chartOptions = computed(() => ({
       ticks: {
         color: isDark.value ? '#666' : '#999',
         font: { size: 9 },
-        callback: (v: number) => formatCount(v),
+        callback: (v: string | number) => formatCount(Number(v)),
         maxTicksLimit: 4
       },
       grid: { color: isDark.value ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)' },
