@@ -1,5 +1,6 @@
 import type { Provider, ProviderConfig, QuotaItem, UsageResult, DeepSeekServiceComponent, DayStatus, ModelCostRecord } from '../shared/types';
 import { HttpClientWithRetry } from '../main/http';
+import { net } from 'electron';
 
 interface BalanceInfo {
   currency: string;
@@ -13,38 +14,46 @@ interface BalanceResponse {
   balance_infos: BalanceInfo[];
 }
 
-interface StatusPageComponent {
-  id: string;
-  name: string;
-  status: string;
-}
-
-interface StatusPageIncident {
-  started_at: string;
-  resolved_at?: string | null;
-  impact: string;
-  components: StatusPageComponent[];
-}
-
-interface IncidentsResponse {
-  incidents: StatusPageIncident[];
-}
-
-interface StatusPageSummary {
-  components: StatusPageComponent[];
-  scheduled_maintenances: Array<{
-    scheduled_for: string;
-    scheduled_until: string;
-    components: StatusPageComponent[];
-  }>;
-}
-
 const STATUS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 let statusCache: { data: DeepSeekServiceComponent[]; ts: number } | null = null;
 
 const STATUS_DAYS = 90;
 
 const TOKEN_EXPIRED = 'TOKEN_EXPIRED';
+
+/**
+ * 使用 Electron net 模块请求 JSON（走 Chromium 网络栈，兼容性更好）
+ * Node 的 https 模块在 Electron 中使用 BoringSSL，部分 CDN 会拒绝其 TLS 握手
+ */
+function netGetJson<T>(url: string, headers?: Record<string, string>): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const request = net.request(url);
+    if (headers) {
+      for (const [key, value] of Object.entries(headers)) {
+        request.setHeader(key, value);
+      }
+    }
+    request.on('response', (response) => {
+      const chunks: Buffer[] = [];
+      response.on('data', (chunk: Buffer) => chunks.push(chunk));
+      response.on('end', () => {
+        const body = Buffer.concat(chunks).toString('utf-8');
+        if (response.statusCode >= 400) {
+          reject(new Error(`HTTP ${response.statusCode}: ${body}`));
+          return;
+        }
+        try {
+          resolve(JSON.parse(body) as T);
+        } catch (e) {
+          reject(new Error(`Failed to parse JSON: ${e}`));
+        }
+      });
+      response.on('error', reject);
+    });
+    request.on('error', reject);
+    request.end();
+  });
+}
 
 function parseModelRecords(days: UsageAmountDayEntry[]): import('../shared/types').ModelTokenRecord[] {
   const records: import('../shared/types').ModelTokenRecord[] = [];
@@ -125,32 +134,52 @@ export async function fetchServiceStatus(httpClient?: HttpClientWithRetry): Prom
   }
 
   try {
-    const client = httpClient || new HttpClientWithRetry(3, 1000);
-    const [summaryResp, incidentsResp] = await Promise.all([
-      client.getJson<StatusPageSummary>('https://status.deepseek.com/api/v2/summary.json', {}),
-      client.getJson<IncidentsResponse>('https://status.deepseek.com/api/v2/incidents.json', {}),
+    const PAGE_ID = '6410630422455';
+    const baseUrl = 'https://status.deepseek.com/api/status-page';
+
+    // 并行获取组件列表和历史故障记录
+    const now = new Date();
+    const endSeconds = Math.floor(now.getTime() / 1000);
+    const startSeconds = endSeconds - STATUS_DAYS * 86400;
+
+    const statusHeaders = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36',
+      'Accept': 'application/json',
+    };
+
+    // 使用 Electron net 模块（Chromium 网络栈），避免 Node https 的 TLS 兼容性问题
+    const [activeResp, structureResp] = await Promise.all([
+      netGetJson<FlashcatActiveResponse>(`${baseUrl}/${PAGE_ID}/summary/active`, statusHeaders),
+      netGetJson<FlashcatStructureResponse>(
+        `${baseUrl}/${PAGE_ID}/summary/structure?start_at_from_seconds=${startSeconds}&start_at_to_seconds=${endSeconds}`,
+        statusHeaders,
+      ),
     ]);
 
-    const components = summaryResp.components || [];
-    const incidents = incidentsResp.incidents || [];
-    const maintenances = summaryResp.scheduled_maintenances || [];
+    const components = activeResp.data?.page?.components || [];
+    const activeChanges = activeResp.data?.active_changes || [];
+    const componentImpacts = structureResp.data?.component_impacts || [];
+
+    // 收集每个组件的活跃故障状态
+    const activeStatusByComponent = new Map<string, string>();
+    for (const ch of activeChanges) {
+      if (ch.components) {
+        for (const c of ch.components) {
+          activeStatusByComponent.set(c.component_id, c.new_status);
+        }
+      }
+    }
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-
-    const cutoff = new Date(today);
-    cutoff.setDate(cutoff.getDate() - STATUS_DAYS);
-
-    // Filter incidents to 90-day window
-    const relevantIncidents = incidents.filter(inc => {
-      const incStart = new Date(inc.started_at);
-      return incStart >= cutoff;
-    });
 
     const result: DeepSeekServiceComponent[] = components.map(comp => {
       const days: DayStatus[] = [];
       let downMinutes = 0;
       const totalMinutes = STATUS_DAYS * 24 * 60;
+
+      // 该组件的所有故障时间段
+      const impacts = componentImpacts.filter(imp => imp.component_id === comp.component_id);
 
       for (let i = STATUS_DAYS - 1; i >= 0; i--) {
         const dayStart = new Date(today);
@@ -160,39 +189,27 @@ export async function fetchServiceStatus(httpClient?: HttpClientWithRetry): Prom
 
         let dayStatus: DayStatus = 'operational';
 
-        for (const inc of relevantIncidents) {
-          const affects = inc.components.some(c => c.id === comp.id);
-          if (!affects) continue;
+        for (const imp of impacts) {
+          const impStart = new Date(imp.start_at_seconds * 1000);
+          const impEnd = new Date(imp.end_at_seconds * 1000);
 
-          const incStart = new Date(inc.started_at);
-          const incEnd = inc.resolved_at ? new Date(inc.resolved_at) : new Date();
-          // Check overlap with this day
-          const overlapStart = incStart > dayStart ? incStart : dayStart;
-          const overlapEnd = incEnd < dayEnd ? incEnd : dayEnd;
+          // 检查与当天的重叠
+          const overlapStart = impStart > dayStart ? impStart : dayStart;
+          const overlapEnd = impEnd < dayEnd ? impEnd : dayEnd;
           if (overlapStart >= overlapEnd) continue;
 
           const overlapMinutes = (overlapEnd.getTime() - overlapStart.getTime()) / 60000;
           downMinutes += overlapMinutes;
 
-          if (inc.impact === 'critical' || inc.impact === 'major') {
+          if (imp.status === 'full_outage') {
             dayStatus = 'outage';
             break;
-          } else if (dayStatus === 'operational') {
-            dayStatus = 'degraded';
-          }
-        }
-
-        // Check maintenances
-        if (dayStatus === 'operational') {
-          for (const m of maintenances) {
-            const mStart = new Date(m.scheduled_for);
-            const mEnd = new Date(m.scheduled_until);
-            if (mStart < dayEnd && mEnd > dayStart) {
-              if (m.components.some(c => c.id === comp.id)) {
-                dayStatus = 'maintenance';
-                break;
-              }
-            }
+          } else if (imp.status === 'partial_outage') {
+            if (dayStatus === 'operational') dayStatus = 'outage';
+          } else if (imp.status === 'degraded') {
+            if (dayStatus === 'operational') dayStatus = 'degraded';
+          } else if (imp.status === 'maintenance') {
+            if (dayStatus === 'operational') dayStatus = 'maintenance';
           }
         }
 
@@ -201,10 +218,17 @@ export async function fetchServiceStatus(httpClient?: HttpClientWithRetry): Prom
 
       const uptimePercent = Math.max(0, ((totalMinutes - downMinutes) / totalMinutes) * 100);
 
+      // 确定当前状态：有活跃故障用活跃状态，否则 operational
+      const activeSt = activeStatusByComponent.get(comp.component_id);
+      let currentStatus: DeepSeekServiceComponent['status'] = 'operational';
+      if (activeSt === 'full_outage') currentStatus = 'major_outage';
+      else if (activeSt === 'partial_outage') currentStatus = 'partial_outage';
+      else if (activeSt === 'degraded') currentStatus = 'degraded_performance';
+
       return {
-        id: comp.id,
+        id: comp.component_id,
         name: comp.name,
-        status: comp.status as DeepSeekServiceComponent['status'],
+        status: currentStatus,
         days,
         uptime: Math.round(uptimePercent * 100) / 100,
       };
@@ -216,6 +240,42 @@ export async function fetchServiceStatus(httpClient?: HttpClientWithRetry): Prom
     console.warn('[DeepSeek] Failed to fetch service status:', e);
     return statusCache?.data ?? [];
   }
+}
+
+// Flashcat 状态页 API 响应类型
+interface FlashcatComponent {
+  component_id: string;
+  name: string;
+  description?: string;
+  order_id?: number;
+}
+
+interface FlashcatActiveChange {
+  id?: number;
+  title?: string;
+  components?: Array<{ component_id: string; new_status: string }>;
+}
+
+interface FlashcatActiveResponse {
+  data?: {
+    page?: {
+      components: FlashcatComponent[];
+    };
+    active_changes?: FlashcatActiveChange[];
+  };
+}
+
+interface FlashcatComponentImpact {
+  component_id: string;
+  start_at_seconds: number;
+  end_at_seconds: number;
+  status: string;
+}
+
+interface FlashcatStructureResponse {
+  data?: {
+    component_impacts?: FlashcatComponentImpact[];
+  };
 }
 
 export class DeepSeekProvider implements Provider {
