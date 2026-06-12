@@ -1,4 +1,5 @@
 import { BrowserWindow, session, shell } from 'electron';
+import { createLoginOverlay } from './login-overlay';
 import type { ConfigManager } from './config';
 import type { ProviderTypeConfig } from '../shared/types';
 
@@ -47,9 +48,11 @@ export function opencodegoWebLogin(accountId: string): Promise<{ success: boolea
     win.setMenuBarVisibility(false);
     loginWindows.set(accountId, win);
 
-    // 限制导航：只允许 opencode.ai、GitHub OAuth、Google OAuth 域名
+    // 限制导航：只允许 opencode.ai、OpenAuth 授权服务、GitHub OAuth、Google OAuth 域名
+    // 注意：opencode.ai/auth 会重定向到 auth.opencode.ai（独立授权服务域名）
     const allowedOrigins = [
       'https://opencode.ai',
+      'https://auth.opencode.ai',
       'https://github.com',
       'https://accounts.google.com',
       'https://accounts.google.co.uk',
@@ -66,6 +69,9 @@ export function opencodegoWebLogin(accountId: string): Promise<{ success: boolea
       shell.openExternal(url);
       return { action: 'deny' };
     });
+
+    // 悬浮工具栏（返回/刷新/加载指示），独立渲染层，窗口创建即存在
+    createLoginOverlay(win, { startUrl: 'https://opencode.ai/auth' });
 
     let resolved = false;
     let checkInterval: ReturnType<typeof setInterval> | null = null;
