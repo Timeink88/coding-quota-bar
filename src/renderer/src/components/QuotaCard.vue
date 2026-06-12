@@ -8,7 +8,6 @@
       <div class="progress-fill" :class="color" :style="{ width: usageRate + '%' }"></div>
     </div>
     <div class="card-bottom">
-      <span class="used-total" v-if="used != null && total != null">{{ formatCredits(used) }} / {{ formatCredits(total) }} Credits</span>
       <span class="reset-text">{{ formatReset(resetAt) }}</span>
     </div>
   </div>
@@ -21,18 +20,12 @@ const props = defineProps<{
   label: string
   labelParams?: Record<string, string | number>
   usageRate: number
-  used?: number
-  total?: number
   resetAt: string
   color: 'green' | 'yellow' | 'red'
   hideBar?: boolean
 }>()
 
 const { t, locale } = useI18n()
-
-function formatCredits(n: number): string {
-  return n.toLocaleString()
-}
 
 function formatReset(iso: string): string {
   if (!iso) return ''
@@ -103,14 +96,8 @@ function formatReset(iso: string): string {
 
 .card-bottom {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
-}
-
-.used-total {
-  font-size: 11px;
-  color: var(--text-secondary);
-  font-variant-numeric: tabular-nums;
 }
 
 .reset-text {
