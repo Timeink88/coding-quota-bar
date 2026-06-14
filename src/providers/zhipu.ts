@@ -153,10 +153,33 @@ interface ModelPricing {
   note?: string;
 }
 
-const { models: MODEL_PRICING, tokenRatio: TOKEN_RATIO } = pricingConfig as {
+const { models: RAW_MODEL_PRICING, tokenRatio: TOKEN_RATIO, fallbackModel: FALLBACK_MODEL } = pricingConfig as {
   models: Record<string, ModelPricing>;
   tokenRatio: { cache: number; input: number; output: number };
+  fallbackModel?: string;
 };
+
+// 大小写不敏感的 pricing lookup：API 返回 "glm-5.2" 或 "GLM-5.2" 都能匹配
+const MODEL_PRICING_LOOKUP: Map<string, ModelPricing> = (() => {
+  const map = new Map<string, ModelPricing>();
+  for (const [key, value] of Object.entries(RAW_MODEL_PRICING)) {
+    map.set(key.toLowerCase(), value);
+  }
+  return map;
+})();
+
+function getPricing(modelName: string): ModelPricing | undefined {
+  if (!modelName) return undefined;
+  const direct = RAW_MODEL_PRICING[modelName];
+  if (direct) return direct;
+  const caseInsensitive = MODEL_PRICING_LOOKUP.get(modelName.toLowerCase());
+  if (caseInsensitive) return caseInsensitive;
+  // 未知模型兜底到 fallbackModel（默认 GLM-5.1）
+  if (FALLBACK_MODEL) {
+    return RAW_MODEL_PRICING[FALLBACK_MODEL] ?? MODEL_PRICING_LOOKUP.get(FALLBACK_MODEL.toLowerCase());
+  }
+  return undefined;
+}
 
 /**
  * 根据 modelDataList 估算 API 调用费用
@@ -165,7 +188,7 @@ function calcEstimatedCost(resp: ZhipuModelUsageResponse | null): number {
   if (!resp?.data?.modelDataList) return 0;
   let total = 0;
   for (const model of resp.data.modelDataList) {
-    const pricing = MODEL_PRICING[model.modelName];
+    const pricing = getPricing(model.modelName);
     if (!pricing) continue;
     const mTokens = model.totalTokens / 1_000_000;
     total += mTokens * (
@@ -182,7 +205,7 @@ function calcEstimatedCost(resp: ZhipuModelUsageResponse | null): number {
  */
 function calcModelRates(): Record<string, number> {
   const rates: Record<string, number> = {};
-  for (const [name, p] of Object.entries(MODEL_PRICING)) {
+  for (const [name, p] of Object.entries(RAW_MODEL_PRICING)) {
     rates[name] = Math.round((
       TOKEN_RATIO.cache * p.cache +
       TOKEN_RATIO.input * p.input +

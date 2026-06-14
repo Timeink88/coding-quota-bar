@@ -660,9 +660,9 @@ async function onBudgetChange(e: Event) {
   transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.progress-fill.green { background: linear-gradient(90deg, #4ade80, #22c55e); }
-.progress-fill.yellow { background: linear-gradient(90deg, #facc15, #eab308); }
-.progress-fill.red { background: linear-gradient(90deg, #f87171, #ef4444); }
+  .progress-fill.green { background: linear-gradient(90deg, var(--cqb-green-light), var(--cqb-green)); }
+  .progress-fill.yellow { background: linear-gradient(90deg, var(--cqb-yellow-light), var(--cqb-yellow)); }
+  .progress-fill.red { background: linear-gradient(90deg, var(--cqb-red-light), var(--cqb-red)); }
 
 .budget-info {
   display: flex;

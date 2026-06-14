@@ -1,12 +1,14 @@
 {
   "description": "智谱 API 模型定价（元/百万token），来源：https://open.bigmodel.cn/pricing",
-  "updatedAt": "2026-04-23",
+  "updatedAt": "2026-06-14",
   "tokenRatio": {
     "cache": 0.96,
     "input": 0.03,
     "output": 0.01
   },
+  "fallbackModel": "GLM-5.1",
   "models": {
+    "GLM-5.2":        { "cache": 2.5, "input": 10,  "output": 36, "tier": "[32+)", "note": "2026-06-13 发布，官方定价页未列出，按 GLM-5.1 × 1.25 估值" },
     "GLM-5.1":        { "cache": 2,    "input": 8,   "output": 28, "tier": "[32+)" },
     "GLM-5-Turbo":    { "cache": 1.8,  "input": 7,   "output": 26, "tier": "[32+)" },
     "GLM-5":          { "cache": 1.5,  "input": 6,   "output": 22, "tier": "[32+)" },

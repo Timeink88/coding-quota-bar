@@ -1,7 +1,7 @@
 /**
  * Renderer 进程共享类型定义
  */
-import type { TrayDisplayRule } from '../../shared/types'
+import type { TrayDisplayRule, TrayColors } from '../../shared/types'
 
 export interface SubscriptionInfo {
   plan: string
@@ -157,6 +157,7 @@ export interface AppConfig {
     colorThresholds: {
       green: number
       yellow: number
+      colors?: TrayColors
     }
   }
   autoStart: boolean

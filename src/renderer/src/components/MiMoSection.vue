@@ -570,9 +570,9 @@ const requestsChartOpts = computed(() => ({
   transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.detail-bar-fill.green { background: linear-gradient(90deg, #4ade80, #22c55e); }
-.detail-bar-fill.yellow { background: linear-gradient(90deg, #facc15, #eab308); }
-.detail-bar-fill.red { background: linear-gradient(90deg, #f87171, #ef4444); }
+  .detail-bar-fill.green { background: linear-gradient(90deg, var(--cqb-green-light), var(--cqb-green)); }
+  .detail-bar-fill.yellow { background: linear-gradient(90deg, var(--cqb-yellow-light), var(--cqb-yellow)); }
+  .detail-bar-fill.red { background: linear-gradient(90deg, var(--cqb-red-light), var(--cqb-red)); }
 
 .credits-top {
   display: flex;
@@ -594,7 +594,7 @@ const requestsChartOpts = computed(() => ({
   color: var(--text-primary);
 }
 .credits-percent.yellow { color: #a16207; }
-.credits-percent.red { color: #dc2626; }
+  .credits-percent.red { color: var(--cqb-red-dark); }
 
 .credits-bar {
   height: 6px;
@@ -609,9 +609,9 @@ const requestsChartOpts = computed(() => ({
   border-radius: 3px;
   transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.credits-fill.green { background: linear-gradient(90deg, #4ade80, #22c55e); }
-.credits-fill.yellow { background: linear-gradient(90deg, #facc15, #eab308); }
-.credits-fill.red { background: linear-gradient(90deg, #f87171, #ef4444); }
+  .credits-fill.green { background: linear-gradient(90deg, var(--cqb-green-light), var(--cqb-green)); }
+  .credits-fill.yellow { background: linear-gradient(90deg, var(--cqb-yellow-light), var(--cqb-yellow)); }
+  .credits-fill.red { background: linear-gradient(90deg, var(--cqb-red-light), var(--cqb-red)); }
 
 .credits-bottom {
   display: flex;

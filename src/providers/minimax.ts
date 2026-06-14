@@ -124,10 +124,11 @@ export class MiniMaxProvider implements Provider {
     }
 
     if (!isUnlimited) {
-      const boostMultiplier = boostPermille / 1000;
+      const effectiveBoost = boostPermille || 1000;
+      const boostMultiplier = effectiveBoost / 1000;
       return {
         label: normalLabel,
-        labelParams: { boostPermille: String(boostPermille) },
+        labelParams: { boostPermille: String(effectiveBoost) },
         used: Math.round(usedPercent * boostMultiplier),
         total: Math.round(100 * boostMultiplier),
         usageRate: usedPercent,

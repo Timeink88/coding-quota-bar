@@ -164,6 +164,14 @@ export interface UpdateStatus {
  */
 export type TrayDisplayRule = 'lowest' | 'highest' | string; // string = compound key "providerType:accountId"
 
+/** 自定义托盘色板（可选，未提供时用 src/shared/colors.ts 默认值） */
+export interface TrayColors {
+  green: string;
+  yellow: string;
+  red: string;
+  gray: string;
+}
+
 export interface AppConfig {
   refreshInterval: number;
   providers: Record<string, ProviderTypeConfig>;
@@ -171,6 +179,7 @@ export interface AppConfig {
     colorThresholds: {
       green: number;
       yellow: number;
+      colors?: TrayColors;
     };
   };
   autoStart: boolean;

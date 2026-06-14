@@ -218,7 +218,8 @@ export class ConfigManager extends EventEmitter {
       display: {
         colorThresholds: {
           green: 50,
-          yellow: 20
+          yellow: 20,
+          colors: undefined
         }
       },
       autoStart: false,

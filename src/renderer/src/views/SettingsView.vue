@@ -165,6 +165,37 @@
           </select>
         </div>
         <div class="form-group">
+          <label class="form-label">{{ $t('settings.colorCustomization') }}</label>
+          <div class="color-config">
+            <div class="color-row">
+              <span class="color-label">{{ $t('settings.colorGreen') }}</span>
+              <input type="number" v-model.number="greenThreshold" min="0" max="100" class="color-number" />
+              <span class="color-unit">%</span>
+              <input type="color" v-model="customGreen" class="color-picker" />
+              <div class="color-preview" :style="{ background: customGreen }"><span>87</span></div>
+            </div>
+            <div class="color-row">
+              <span class="color-label">{{ $t('settings.colorYellow') }}</span>
+              <span class="color-threshold-hint">{{ greenThreshold - 1 }}% ~ {{ yellowThreshold }}%</span>
+              <input type="color" v-model="customYellow" class="color-picker" />
+              <div class="color-preview" :style="{ background: customYellow }"><span>42</span></div>
+            </div>
+            <div class="color-row">
+              <span class="color-label">{{ $t('settings.colorRed') }}</span>
+              <span class="color-threshold-hint">&lt; {{ yellowThreshold }}%</span>
+              <input type="color" v-model="customRed" class="color-picker" />
+              <div class="color-preview" :style="{ background: customRed }"><span>5</span></div>
+            </div>
+            <div class="color-row">
+              <span class="color-label">{{ $t('settings.colorGray') }}</span>
+              <span class="color-threshold-hint">{{ $t('settings.colorGrayHint') }}</span>
+              <input type="color" v-model="customGray" class="color-picker" />
+              <div class="color-preview" :style="{ background: customGray }"><span>--</span></div>
+            </div>
+          </div>
+          <button class="reset-colors-btn" @click="resetColors">{{ $t('settings.resetColors') }}</button>
+        </div>
+        <div class="form-group">
           <label class="form-label">{{ $t('settings.language') }}</label>
           <select v-model="language" class="form-select">
             <option value="zh-CN">中文</option>
@@ -285,6 +316,12 @@ const rememberPopupPosition = ref(false)
 const showEstimatedCost = ref(false)
 const trayDisplayRule = ref<string>('lowest')
 const autoCheckUpdateEnabled = ref(true)
+const customGreen = ref('#4ADE80')
+const customYellow = ref('#FACC15')
+const customRed = ref('#F87171')
+const customGray = ref('#94A3B8')
+const greenThreshold = ref(50)
+const yellowThreshold = ref(20)
 const saving = ref(false)
 const settingsBodyRef = ref<HTMLElement | null>(null)
 const saveStatus = ref('')
@@ -432,9 +469,20 @@ onMounted(async () => {
   showEstimatedCost.value = config.showEstimatedCost ?? false
   trayDisplayRule.value = config.trayDisplayRule ?? 'lowest'
   autoCheckUpdateEnabled.value = config.autoCheckUpdate ?? true
+  const thresholds = config.display?.colorThresholds
+  if (thresholds) {
+    greenThreshold.value = thresholds.green ?? 50
+    yellowThreshold.value = thresholds.yellow ?? 20
+    if (thresholds.colors) {
+      customGreen.value = thresholds.colors.green ?? '#4ADE80'
+      customYellow.value = thresholds.colors.yellow ?? '#FACC15'
+      customRed.value = thresholds.colors.red ?? '#F87171'
+      customGray.value = thresholds.colors.gray ?? '#94A3B8'
+    }
+  }
 
   // 配置加载完后开始监听变化，自动保存
-  watch([providerList, refreshInterval, autoStart, language, popupTrigger, memorySavingMode, rememberPopupPosition, showEstimatedCost, trayDisplayRule, autoCheckUpdateEnabled], () => {
+  watch([providerList, refreshInterval, autoStart, language, popupTrigger, memorySavingMode, rememberPopupPosition, showEstimatedCost, trayDisplayRule, autoCheckUpdateEnabled, customGreen, customYellow, customRed, customGray, greenThreshold, yellowThreshold], () => {
     scheduleSave()
   }, { deep: true })
 
@@ -515,6 +563,8 @@ async function saveConfig() {
   }
 
   try {
+    clampThresholds()
+    normalizeColors()
     await window.electronAPI.updateConfig({
       providers,
       refreshInterval: parseInt(refreshInterval.value, 10),
@@ -526,6 +576,18 @@ async function saveConfig() {
       language: language.value,
       trayDisplayRule: trayDisplayRule.value,
       autoCheckUpdate: autoCheckUpdateEnabled.value,
+      display: {
+        colorThresholds: {
+          green: greenThreshold.value,
+          yellow: yellowThreshold.value,
+          colors: {
+            green: customGreen.value,
+            yellow: customYellow.value,
+            red: customRed.value,
+            gray: customGray.value,
+          },
+        },
+      },
     })
     locale.value = language.value
     saveStatus.value = t('settings.saved')
@@ -541,6 +603,38 @@ async function saveConfig() {
 
 function openGitHub() {
   window.electronAPI.openExternal('https://github.com/hyizhou/coding-quota-bar')
+}
+
+function resetColors() {
+  customGreen.value = '#4ADE80'
+  customYellow.value = '#FACC15'
+  customRed.value = '#F87171'
+  customGray.value = '#94A3B8'
+  greenThreshold.value = 50
+  yellowThreshold.value = 20
+}
+
+function isValidHex(v: string): boolean {
+  return /^#[0-9a-fA-F]{6}$/.test(v)
+}
+
+function clampThresholds() {
+  if (typeof greenThreshold.value !== 'number' || isNaN(greenThreshold.value)) greenThreshold.value = 50
+  if (typeof yellowThreshold.value !== 'number' || isNaN(yellowThreshold.value)) yellowThreshold.value = 20
+  greenThreshold.value = Math.max(0, Math.min(100, Math.round(greenThreshold.value)))
+  yellowThreshold.value = Math.max(0, Math.min(100, Math.round(yellowThreshold.value)))
+  if (greenThreshold.value < yellowThreshold.value) {
+    const tmp = greenThreshold.value
+    greenThreshold.value = yellowThreshold.value
+    yellowThreshold.value = tmp
+  }
+}
+
+function normalizeColors() {
+  if (!isValidHex(customGreen.value)) customGreen.value = '#4ADE80'
+  if (!isValidHex(customYellow.value)) customYellow.value = '#FACC15'
+  if (!isValidHex(customRed.value)) customRed.value = '#F87171'
+  if (!isValidHex(customGray.value)) customGray.value = '#94A3B8'
 }
 
 function openFeedback() {
@@ -648,7 +742,7 @@ function handleUpdateClick() {
   color: var(--text-tertiary);
 }
 .delete-btn:hover {
-  color: #ef4444;
+  color: var(--cqb-red);
 }
 
 .no-accounts {
@@ -711,8 +805,8 @@ function handleUpdateClick() {
 }
 
 .web-login-btn.active {
-  border-color: #22C55E;
-  color: #22C55E;
+  border-color: var(--cqb-green);
+  color: var(--cqb-green);
 }
 
 .web-logout-btn {
@@ -727,12 +821,87 @@ function handleUpdateClick() {
 }
 
 .web-logout-btn:hover {
-  color: #ef4444;
-  border-color: #ef4444;
+  color: var(--cqb-red);
+  border-color: var(--cqb-red);
 }
 
 .save-status { font-size: 11px; color: #4CAF50; }
 .save-status.error { color: #F44336; }
+
+.color-config {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.color-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.color-label {
+  flex: 0 0 60px;
+  color: var(--text-secondary);
+}
+.color-threshold-hint {
+  flex: 1;
+  color: var(--text-tertiary);
+  font-size: 11px;
+}
+.color-number {
+  width: 50px;
+  padding: 3px 6px;
+  border: 1px solid var(--border-base);
+  border-radius: 4px;
+  background: var(--bg-card);
+  color: var(--text-heading);
+  font-size: 12px;
+  text-align: center;
+}
+.color-unit {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  margin-right: auto;
+}
+.color-picker {
+  width: 32px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--border-base);
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+}
+.color-picker::-webkit-color-swatch-wrapper { padding: 2px; }
+.color-picker::-webkit-color-swatch { border: none; border-radius: 3px; }
+.color-preview {
+  width: 32px;
+  height: 24px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(0, 0, 0, 0.8);
+  font-size: 10px;
+  font-weight: 700;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+}
+.reset-colors-btn {
+  margin-top: 4px;
+  padding: 4px 10px;
+  background: transparent;
+  border: 1px solid var(--border-base);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.reset-colors-btn:hover {
+  border-color: #3B82F6;
+  color: #3B82F6;
+}
 
 .version-section {
   display: flex;
@@ -783,9 +952,9 @@ function handleUpdateClick() {
   cursor: not-allowed;
 }
 .check-update-btn.update-ready {
-  background: #22C55E;
+  background: var(--cqb-green);
   color: #fff;
-  border-color: #22C55E;
+  border-color: var(--cqb-green);
 }
 .check-update-btn.update-ready:hover {
   background: #16A34A;
