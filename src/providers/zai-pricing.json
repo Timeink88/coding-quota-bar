@@ -7,6 +7,7 @@
     "output": 0.01
   },
   "models": {
+    "GLM-5.2":        { "cache": 2,    "input": 8,   "output": 28, "tier": "1M" },
     "GLM-5.1":        { "cache": 2,    "input": 8,   "output": 28, "tier": "[32+)" },
     "GLM-5-Turbo":    { "cache": 1.8,  "input": 7,   "output": 26, "tier": "[32+)" },
     "GLM-5":          { "cache": 1.5,  "input": 6,   "output": 22, "tier": "[32+)" },
