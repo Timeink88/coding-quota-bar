@@ -1,4 +1,8 @@
 # Changelog
+## [1.5.0] - 2026-06-24
+### Added
+- 添加 opencode go 套餐支持
+
 ## [1.4.5] - 2026-06-17
 ### Fixed
 - DeepSeek 部分显示异常的修复
