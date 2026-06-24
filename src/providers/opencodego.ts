@@ -206,8 +206,10 @@ export class OpenCodeGoProvider implements Provider {
     let win: BrowserWindow | null = null;
 
     try {
-      // 1. 加载首页获取 workspace ID
-      win = await createLoadedWindow(accountId, 'https://opencode.ai');
+      // 1. 加载 /go 页面获取 workspace ID
+      // 选择 /go 而非主页的原因：主页是营销页不含 wrk_id；/go 路由会服务端查询
+      // getLastSeenWorkspaceID 并把 /workspace/{wrk_id}/go 渲染到 CTA 链接的 href 中
+      win = await createLoadedWindow(accountId, 'https://opencode.ai/go');
 
       const workspaceId = await getWorkspaceId(win);
       if (!workspaceId) {
