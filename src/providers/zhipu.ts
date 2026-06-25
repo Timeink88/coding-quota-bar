@@ -439,15 +439,36 @@ export class ZhipuProvider implements Provider {
   }
 
   /**
-   * 从订阅 API 响应解析当前有效的订阅信息
+   * 从订阅 API 响应解析订阅信息
+   *
+   * status='VALID' 是确定的取值，优先用它定位当前订阅。
+   * 找不到 VALID 时，因 status 其他取值含义未知，用 nextRenewTime 兜底
+   * 判断是否已过期，到期即标记为 EXPIRED，让 UI 显示"已过期"徽章。
    */
   private parseSubscription(resp: ZhipuSubscriptionResponse | null, level: string, hasWeeklyLimit: boolean): SubscriptionInfo | undefined {
     if (!resp?.data?.length) return undefined;
-    const sub = resp.data.find(s => s.status === 'VALID');
+
+    // 优先 status='VALID'；找不到时取 nextRenewTime 最晚且有效的一条
+    const validSub = resp.data.find(s => s.status === 'VALID');
+    const fallbackSub = [...resp.data]
+      .filter(s => {
+        const t = new Date(s.nextRenewTime).getTime();
+        return !isNaN(t);
+      })
+      .sort((a, b) =>
+        new Date(b.nextRenewTime).getTime() - new Date(a.nextRenewTime).getTime()
+      )[0];
+    const sub = validSub ?? fallbackSub;
     if (!sub) return undefined;
+
+    // 仅在非 VALID 状态下用时间兜底判断
+    const renewTime = new Date(sub.nextRenewTime);
+    const isExpired = !validSub
+      && !isNaN(renewTime.getTime()) && renewTime.getTime() < Date.now();
+
     return {
       plan: hasWeeklyLimit ? `新 ${level.toUpperCase()}` : `老 ${level.toUpperCase()}`,
-      status: sub.status,
+      status: isExpired ? 'EXPIRED' : 'VALID',
       currentRenewTime: sub.currentRenewTime,
       nextRenewTime: sub.nextRenewTime,
       autoRenew: sub.autoRenew === 1,
