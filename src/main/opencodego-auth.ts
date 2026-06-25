@@ -48,24 +48,33 @@ export function opencodegoWebLogin(accountId: string): Promise<{ success: boolea
     win.setMenuBarVisibility(false);
     loginWindows.set(accountId, win);
 
-    // 限制导航：只允许 opencode.ai、OpenAuth 授权服务、GitHub OAuth、Google OAuth 域名
-    // 注意：opencode.ai/auth 会重定向到 auth.opencode.ai（独立授权服务域名）
-    const allowedOrigins = [
-      'https://opencode.ai',
-      'https://auth.opencode.ai',
-      'https://github.com',
-      'https://accounts.google.com',
-      'https://accounts.google.co.uk',
+    // 限制导航：仅放行 OAuth 流程相关的可信域名（防钓鱼、防劫持）。
+    // 用 host 后缀匹配，覆盖 OAuth 提供商所有子域名（未来加新子域无需改代码）。
+    //   - opencode.ai / auth.opencode.ai：应用与授权服务
+    //   - *.google.com / *.google.co.uk：Google OAuth（含 accounts/www/myaccount/gds 等子域）
+    //   - *.github.com：GitHub OAuth（含 login/sessions 等子域）
+    const allowedHostSuffixes = [
+      'opencode.ai',
+      'auth.opencode.ai',
+      'google.com',
+      'google.co.uk',
+      'github.com',
     ];
-    win.webContents.on('will-navigate', (event, url) => {
-      if (!allowedOrigins.some(o => url.startsWith(o))) {
-        event.preventDefault();
+    const isAllowed = (url: string): boolean => {
+      try {
+        const host = new URL(url).hostname.toLowerCase();
+        return allowedHostSuffixes.some(suffix =>
+          host === suffix || host.endsWith('.' + suffix)
+        );
+      } catch {
+        return false;
       }
+    };
+    win.webContents.on('will-navigate', (event, url) => {
+      if (!isAllowed(url)) event.preventDefault();
     });
     win.webContents.setWindowOpenHandler(({ url }) => {
-      if (allowedOrigins.some(o => url.startsWith(o))) {
-        return { action: 'allow' };
-      }
+      if (isAllowed(url)) return { action: 'allow' };
       shell.openExternal(url);
       return { action: 'deny' };
     });
