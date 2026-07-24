@@ -34,3 +34,8 @@ CLAUDE.md
 docs/
 scripts/
 .playwright-cli/
+
+# Agent tooling / temp artifacts
+.sisyphus/
+.spec-workflow/
+_nul
