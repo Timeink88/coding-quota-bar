@@ -104,9 +104,9 @@
                   <input
                     :type="account.showKey ? 'text' : 'password'"
                     class="form-input"
-                    v-model="account.apiKey"
-                    placeholder="API Key"
-                    @input="account.apiKeyDirty = true"
+                    :value="account.apiKeyDirty ? account.apiKey : ''"
+                    :placeholder="account.maskedApiKey || 'API Key'"
+                    @input="onApiKeyInput(account, $event)"
                   />
                   <button class="icon-btn eye-btn" @click="account.showKey = !account.showKey">
                     <svg v-if="account.showKey" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -283,6 +283,7 @@ interface AccountInfo {
   label: string
   enabled: boolean
   apiKey: string
+  maskedApiKey: string
   showKey: boolean
   budget?: number
   authMode: 'apikey' | 'weblogin'
@@ -343,6 +344,7 @@ function addAccount(providerKey: string) {
     label: '',
     enabled: true,
     apiKey: '',
+    maskedApiKey: '',
     showKey: false,
     authMode: (providerKey === 'mimo' || providerKey === 'opencodego' || providerKey === 'codex') ? 'weblogin' : 'apikey',
     webTokenStatus: 'none',
@@ -413,6 +415,17 @@ function scheduleSave() {
   }, 500)
 }
 
+/**
+ * API Key 输入处理：用户主动输入新值时才标记 dirty 并填入 apiKey。
+ * 注意不能用 v-model 直接绑定 account.apiKey —— 否则页面回填的脱敏掩码
+ * （如 76f2****zFwz）会被当成新密钥在保存时写回，污染密钥。
+ */
+function onApiKeyInput(account: AccountInfo, event: Event) {
+  account.apiKey = (event.target as HTMLInputElement).value
+  account.apiKeyDirty = true
+  scheduleSave()
+}
+
 onMounted(async () => {
   appVersion.value = await window.electronAPI.getAppVersion()
   const config = await window.electronAPI.getConfig()
@@ -428,7 +441,12 @@ onMounted(async () => {
       id: account.id,
       label: account.label ?? '',
       enabled: account.enabled ?? false,
-      apiKey: account.apiKey ?? '',
+      // 主进程返回的 apiKey 是脱敏掩码（前4+****+后4），不能直接当明文用，
+      // 否则保存时会把掩码当成新密钥写回，导致密钥被污染。
+      // 这里把掩码存到 maskedApiKey 仅用于输入框占位提示，apiKey 清空，
+      // 只有用户主动输入新值（onApiKeyInput）才会填入 apiKey 并参与保存。
+      maskedApiKey: account.apiKey ?? '',
+      apiKey: '',
       showKey: false,
       budget: (account as any).budget ?? undefined,
       authMode: (key === 'mimo' || key === 'opencodego' || key === 'codex') ? (account.authMode ?? 'weblogin') : (account.authMode ?? 'apikey'),
@@ -449,6 +467,7 @@ onMounted(async () => {
         label: 'Codex',
         enabled: false,
         apiKey: '',
+        maskedApiKey: '',
         showKey: false,
         authMode: 'weblogin',
         webTokenStatus: 'none',
