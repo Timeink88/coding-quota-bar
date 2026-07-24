@@ -169,6 +169,13 @@ export class ConfigManager extends EventEmitter {
         console.log('[Config] Migrated: removed updateInfo from persisted config');
       }
 
+      // 本地分支默认不再订阅远程更新，避免启动后反复弹更新提醒。
+      if (process.env.CQB_ENABLE_REMOTE_UPDATES !== '1' && this.config.autoCheckUpdate !== false) {
+        this.config.autoCheckUpdate = false;
+        migrated = true;
+        console.log('[Config] Migrated: disabled remote update auto-check');
+      }
+
       if (migrated) {
         await this.save(this.config);
       }
@@ -225,7 +232,7 @@ export class ConfigManager extends EventEmitter {
       autoStart: false,
       language: 'zh-CN',
       theme: 'auto',
-      autoCheckUpdate: true,
+      autoCheckUpdate: false,
       autoCheckUpdateInterval: 14400,
       lastAutoCheckTime: null
     };

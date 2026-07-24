@@ -10,11 +10,7 @@
     "dist/**/*",
     "package.json"
   ],
-  "publish": {
-    "provider": "github",
-    "owner": "hyizhou",
-    "repo": "coding-quota-bar"
-  },
+  "publish": null,
   "win": {
     "target": [
       {
