@@ -68,6 +68,22 @@ const DIGIT_FONT: Record<string, string[]> = {
 };
 
 /**
+ * 三位数专用窄字体。16px 托盘图标里 "100" 使用 5x7 字体会贴边且无法描边。
+ */
+const COMPACT_DIGIT_FONT: Record<string, string[]> = {
+  '0': ['111', '101', '101', '101', '101', '101', '111'],
+  '1': ['010', '110', '010', '010', '010', '010', '111'],
+  '2': ['111', '001', '001', '111', '100', '100', '111'],
+  '3': ['111', '001', '001', '111', '001', '001', '111'],
+  '4': ['101', '101', '101', '111', '001', '001', '001'],
+  '5': ['111', '100', '100', '111', '001', '001', '111'],
+  '6': ['111', '100', '100', '111', '101', '101', '111'],
+  '7': ['111', '001', '001', '010', '010', '010', '010'],
+  '8': ['111', '101', '101', '111', '101', '101', '111'],
+  '9': ['111', '101', '101', '111', '001', '001', '111'],
+};
+
+/**
  * CRC32 查找表
  */
 const CRC_TABLE = (() => {
@@ -134,7 +150,6 @@ function encodePng(width: number, height: number, rgba: Buffer): Buffer {
  * @param colorHex 可选自定义颜色 hex；不传则从内置 COLORS 取
  */
 export function createTrayIcon(percent: number, color: DisplayColor, colorHexOverride?: string): Electron.NativeImage {
-  const size = 16;
   const fallbackHex = COLORS[color];
   const colorHex = (colorHexOverride && /^#[0-9a-fA-F]{6}$/.test(colorHexOverride))
     ? colorHexOverride
@@ -144,14 +159,27 @@ export function createTrayIcon(percent: number, color: DisplayColor, colorHexOve
   const g = parseInt(colorHex.slice(3, 5), 16) || 0;
   const b = parseInt(colorHex.slice(5, 7), 16) || 0;
 
+  const png1x = renderTrayNumberPng(percent, r, g, b, 16, 1);
+  const icon = nativeImage.createFromBuffer(png1x);
+  const png2x = renderTrayNumberPng(percent, r, g, b, 32, 2);
+  icon.addRepresentation({
+    scaleFactor: 2,
+    dataURL: `data:image/png;base64,${png2x.toString('base64')}`,
+  });
+  return icon;
+}
+
+function renderTrayNumberPng(percent: number, r: number, g: number, b: number, size: number, pixelScale: number): Buffer {
   const pixels = Buffer.alloc(size * size * 4, 0);
 
   const noData = percent < 0;
-  const text = noData ? '--' : String(Math.round(percent));
-  const charWidth = 5;
-  const charHeight = 7;
-  const charGap = text.length > 2 ? 0 : 1;
-  const textWidth = text.length * charWidth + (text.length - 1) * charGap;
+  const displayPercent = Math.max(0, Math.min(100, Math.round(percent)));
+  const text = noData ? '--' : String(displayPercent);
+  const font = text.length > 2 ? COMPACT_DIGIT_FONT : DIGIT_FONT;
+  const charHeight = 7 * pixelScale;
+  const charGap = pixelScale;
+  const glyphWidths = [...text].map(ch => (font[ch]?.[0]?.length ?? 0) * pixelScale);
+  const textWidth = glyphWidths.reduce((sum, width) => sum + width, 0) + (text.length - 1) * charGap;
   const offsetX = Math.floor((size - textWidth) / 2);
   const offsetY = Math.floor((size - charHeight) / 2);
 
@@ -159,25 +187,34 @@ export function createTrayIcon(percent: number, color: DisplayColor, colorHexOve
   const litPixels = new Set<string>();
   const litCoords: Array<{ x: number; y: number }> = [];
 
+  let cursorX = offsetX;
   for (let ci = 0; ci < text.length; ci++) {
-    const glyph = DIGIT_FONT[text[ci]];
-    if (!glyph) continue;
-    const cx = offsetX + ci * (charWidth + charGap);
+    const glyph = font[text[ci]];
+    if (!glyph) {
+      cursorX += charGap;
+      continue;
+    }
+    const cx = cursorX;
     for (let row = 0; row < glyph.length; row++) {
       for (let col = 0; col < glyph[row].length; col++) {
         if (glyph[row][col] === '1') {
-          const px = cx + col;
-          const py = offsetY + row;
-          if (px >= 0 && px < size && py >= 0 && py < size) {
-            const key = `${px},${py}`;
-            if (!litPixels.has(key)) {
-              litPixels.add(key);
-              litCoords.push({ x: px, y: py });
+          for (let sy = 0; sy < pixelScale; sy++) {
+            for (let sx = 0; sx < pixelScale; sx++) {
+              const px = cx + col * pixelScale + sx;
+              const py = offsetY + row * pixelScale + sy;
+              if (px >= 0 && px < size && py >= 0 && py < size) {
+                const key = `${px},${py}`;
+                if (!litPixels.has(key)) {
+                  litPixels.add(key);
+                  litCoords.push({ x: px, y: py });
+                }
+              }
             }
           }
         }
       }
     }
+    cursorX += (glyph[0]?.length ?? 0) * pixelScale + charGap;
   }
 
   const setPixel = (x: number, y: number, pr: number, pg: number, pb: number, pa: number) => {
@@ -189,9 +226,8 @@ export function createTrayIcon(percent: number, color: DisplayColor, colorHexOve
     pixels[idx + 3] = pa;
   };
 
-  // 描边策略：3 位数字（仅 "100"）字符间已紧贴，加描边会粘连 → 跳过描边
-  // 1-2 位数字字符间有 1px gap，描边能显著提升任意背景下的可见性
-  const enableOutline = text.length <= 2;
+  // 16px 的 "100" 空隙只有 1px，描边会把三个数字糊成一块；2x 表示保留描边供高 DPI 托盘使用。
+  const enableOutline = text.length <= 2 || pixelScale > 1;
 
   if (enableOutline) {
     // Pass 1: 8 邻接外扩黑色描边（仅画在"非亮"位置）
@@ -211,13 +247,12 @@ export function createTrayIcon(percent: number, color: DisplayColor, colorHexOve
     }
   }
 
-  // Pass 2: 在描边之上绘制主色亮像素（3 位时直接画在透明背景上）
+  // Pass 2: 在描边之上绘制主色亮像素
   for (const { x, y } of litCoords) {
     setPixel(x, y, r, g, b, 255);
   }
 
-  const pngBuffer = encodePng(size, size, pixels);
-  return nativeImage.createFromBuffer(pngBuffer);
+  return encodePng(size, size, pixels);
 }
 
 /**
