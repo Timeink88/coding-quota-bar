@@ -364,6 +364,12 @@ export class ZhipuProvider implements Provider {
     // 3. 构建额度列表
     const quotas = quotaResp.data.limits.map(item => {
       const { label, labelParams } = getLimitLabel(item);
+      // 周期长度：unit=3 小时 / unit=1 天 / unit=5 月 / 其他按天估算
+      const periodHours =
+        item.unit === 3 ? item.number :
+        item.unit === 1 ? item.number * 24 :
+        item.unit === 5 ? item.number * 30 * 24 :
+        item.number * 24;  // 兜底
       if (item.type === 'TOKENS_LIMIT') {
         const used = resp1d?.data?.totalUsage?.totalModelCallCount ?? 0;
         const total = item.percentage > 0 ? Math.round(used / (item.percentage / 100)) : 0;
@@ -374,6 +380,7 @@ export class ZhipuProvider implements Provider {
           total,
           usageRate: item.percentage,
           resetAt: toISODate(item.nextResetTime),
+          periodHours,
           limitType: 'tokens' as const
         };
       }
@@ -384,6 +391,7 @@ export class ZhipuProvider implements Provider {
         total: item.usage ?? 0,
         usageRate: item.percentage,
         resetAt: toISODate(item.nextResetTime),
+        periodHours,
         limitType: item.type === 'TIME_LIMIT' ? 'mcp' as const : undefined
       };
     });

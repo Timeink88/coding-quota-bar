@@ -22,6 +22,7 @@ export interface QuotaItem {
   usageRate: number    // 使用率 0-100
   resetAt: string      // 重置时间
   startAt?: string     // 周期开始时间
+  periodHours?: number // 周期长度（小时），用于估算爆仓时间。可选，不传则不算
   color: 'green' | 'yellow' | 'red'
   limitType?: string   // 限制类型标识，如 "tokens"、"mcp"
   hideBar?: boolean    // 为 true 时不显示进度条，仅显示文本
@@ -73,6 +74,7 @@ export interface AccountUsageData {
   label?: string
   level?: string
   currency?: string
+  authMode?: 'apikey' | 'weblogin'  // 认证模式；DeepSeek 等多模式 provider 用
   subscription?: SubscriptionInfo
   error?: string
   quotas: QuotaItem[]

@@ -142,9 +142,10 @@
             <template v-else>
               <ZhipuSection v-if="activeProvider.key === 'zhipu'" :account="getActiveAccount(activeProvider)!" />
               <MiniMaxSection v-else-if="activeProvider.key === 'minimax'" :account="getActiveAccount(activeProvider)!" />
-              <DeepSeekSection v-else-if="activeProvider.key === 'deepseek'" :account="getActiveAccount(activeProvider)!" />
+              <DeepSeekSection v-else-if="activeProvider.key === 'deepseek'" :account="getActiveAccount(activeProvider)!" @open-settings="$emit('open-settings')" />
               <MiMoSection v-else-if="activeProvider.key === 'mimo'" :account="getActiveAccount(activeProvider)!" />
               <CodexSection v-else-if="activeProvider.key === 'codex'" :account="getActiveAccount(activeProvider)!" />
+              <OpenCodeGoSection v-else-if="activeProvider.key === 'opencode-go'" :account="getActiveAccount(activeProvider)!" />
               <DeepSeekServiceStatus v-if="activeProvider.key === 'deepseek' && !getActiveAccount(activeProvider)!.error" :account="getActiveAccount(activeProvider)!" />
             </template>
           </template>
@@ -161,7 +162,14 @@
     />
 
     <footer class="footer">
-      <span>{{ lastUpdateText }}</span>
+      <span class="footer-status">
+        <span
+          class="status-dot"
+          :class="freshnessClass"
+          :title="freshnessTitle"
+        ></span>
+        <span>{{ lastUpdateText }}</span>
+      </span>
     </footer>
   </div>
 </template>
@@ -178,6 +186,7 @@ import DeepSeekSection from '../components/DeepSeekSection.vue'
 import DeepSeekServiceStatus from '../components/DeepSeekServiceStatus.vue'
 import MiMoSection from '../components/MiMoSection.vue'
 import CodexSection from '../components/CodexSection.vue'
+import OpenCodeGoSection from '../components/OpenCodeGoSection.vue'
 import type { ProviderUsageData, AccountUsageData, UsageState } from '../types'
 import { useTheme } from '../composables/useTheme'
 
@@ -272,6 +281,26 @@ const lastUpdateText = computed(() => {
     if (diffMins < 1440) return t('main.hoursAgo', { n: Math.floor(diffMins / 60) })
     return date.toLocaleTimeString(locale.value, { hour: '2-digit', minute: '2-digit' })
   } catch { return lastUpdate.value }
+})
+
+/**
+ * 数据新鲜度：< 1min 绿、1-5min 黄、> 5min 红、无数据灰
+ * 用点色 + 脉冲动画暗示"是否需要刷新"
+ */
+const freshnessClass = computed(() => {
+  if (!lastUpdate.value) return 'status-unknown'
+  const diffMins = Math.floor((now.value - new Date(lastUpdate.value).getTime()) / 60000)
+  if (diffMins < 1) return 'status-fresh'
+  if (diffMins < 5) return 'status-warm'
+  return 'status-stale'
+})
+
+const freshnessTitle = computed(() => {
+  const c = freshnessClass.value
+  if (c === 'status-fresh') return '数据最新'
+  if (c === 'status-warm') return '数据略旧，点击刷新'
+  if (c === 'status-stale') return '数据过期，建议刷新'
+  return '尚未获取数据'
 })
 
 function applyState(state: UsageState) {
@@ -714,5 +743,52 @@ onUnmounted(() => {
 .pin-btn.active {
   opacity: 1;
   color: var(--text-primary);
+}
+
+/* === Footer 状态点 === */
+.footer-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+  position: relative;
+  transition: background 0.3s;
+}
+
+/* 数据新鲜（< 1min）：纯绿，无动画 */
+.status-dot.status-fresh {
+  background: var(--cqb-green);
+  box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.18);
+}
+
+/* 数据略旧（1-5min）：黄色，慢脉冲暗示"该刷新了" */
+.status-dot.status-warm {
+  background: var(--cqb-yellow);
+  box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.20);
+  animation: dot-pulse 2.4s ease-in-out infinite;
+}
+
+/* 数据过期（> 5min）：红色，快脉冲 + 视觉刺眼 */
+.status-dot.status-stale {
+  background: var(--cqb-red);
+  box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.22);
+  animation: dot-pulse 1.4s ease-in-out infinite;
+}
+
+/* 尚未获取数据：灰色 */
+.status-dot.status-unknown {
+  background: var(--cqb-gray);
+  opacity: 0.5;
+}
+
+@keyframes dot-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 currentColor; }
+  50%      { box-shadow: 0 0 0 4px transparent; }
 }
 </style>
