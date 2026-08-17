@@ -31,6 +31,7 @@ electron-builder.yml
 
 .claude/
 CLAUDE.md
+AGENTS.md
 docs/
 scripts/
 .playwright-cli/

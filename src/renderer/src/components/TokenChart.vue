@@ -305,9 +305,12 @@ const totalRows = computed(() =>
 
 const totalCost = computed(() => {
   if (!props.modelRates) return 0
+  const ratesLower = new Map(
+    Object.entries(props.modelRates).map(([name, rate]) => [name.toLowerCase(), rate])
+  )
   let total = 0
   for (const [model, tokens] of modelTotals.value) {
-    const rate = props.modelRates[model]
+    const rate = ratesLower.get(model.toLowerCase())
     if (rate) total += tokens / 1_000_000 * rate
   }
   return total
@@ -315,9 +318,12 @@ const totalCost = computed(() => {
 
 const costRows = computed(() => {
   if (!props.modelRates || totalCost.value <= 0) return []
+  const ratesLower = new Map(
+    Object.entries(props.modelRates).map(([name, rate]) => [name.toLowerCase(), rate])
+  )
   return Array.from(modelTotals.value, ([model, tokens]) => {
-    const rate = props.modelRates![model]
-    return { label: model, value: rate ? `¥ ${(tokens / 1_000_000 * rate).toFixed(2)}` : '' }
+    const rate = ratesLower.get(model.toLowerCase())
+    return { label: model, value: rate ? `¥ ${(tokens / 1_000_000 * rate).toFixed(2)}` : '—' }
   })
 })
 

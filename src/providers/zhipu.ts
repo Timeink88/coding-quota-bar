@@ -158,6 +158,11 @@ const { models: MODEL_PRICING, tokenRatio: TOKEN_RATIO } = pricingConfig as {
   tokenRatio: { cache: number; input: number; output: number };
 };
 
+/** 模型名统一转小写后匹配，兼容 API 返回 "GLM-5.2-HighSpeed" / "glm-5.2-highspeed" 等写法 */
+const MODEL_PRICING_LOWER = new Map(
+  Object.entries(MODEL_PRICING).map(([name, pricing]) => [name.toLowerCase(), pricing])
+);
+
 /**
  * 根据 modelDataList 估算 API 调用费用
  */
@@ -165,7 +170,7 @@ function calcEstimatedCost(resp: ZhipuModelUsageResponse | null): number {
   if (!resp?.data?.modelDataList) return 0;
   let total = 0;
   for (const model of resp.data.modelDataList) {
-    const pricing = MODEL_PRICING[model.modelName];
+    const pricing = MODEL_PRICING_LOWER.get(model.modelName.toLowerCase());
     if (!pricing) continue;
     const mTokens = model.totalTokens / 1_000_000;
     total += mTokens * (
