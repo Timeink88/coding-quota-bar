@@ -23,6 +23,7 @@ let isPopupVisible = false;
 let hideTimer: ReturnType<typeof setTimeout> | null = null;
 let savePositionTimer: ReturnType<typeof setTimeout> | null = null;
 let blurHandler: (() => void) | null = null;
+let displayListenerBound = false;
 
 let _getTrayManager: () => TrayManager | null = () => null;
 let _getConfigManager: () => ConfigManager | null = () => null;
@@ -109,16 +110,79 @@ function scheduleSavePosition(): void {
 }
 
 /**
+ * 校正弹窗尺寸
+ *
+ * 显示器缩放比例变化后，窗口内容会立即按新比例渲染，但窗口物理尺寸
+ * 可能不会跟着重算，导致内容比窗口大、放不下的部分被裁掉（表现为
+ * 窗口缺一块）。此函数将窗口重设为预期尺寸并核对结果；仍不正确时
+ * 仅在弹窗从隐藏转为显示的过渡阶段才允许销毁重建（此时页面重载无
+ * 感知）；弹窗可见期间绝不重建，避免页面状态丢失。
+ */
+function correctPopupSize(x: number, y: number): void {
+  if (!popupWindow || popupWindow.isDestroyed()) return;
+
+  popupWindow.setBounds({ x, y, width: POPUP_WIDTH, height: POPUP_HEIGHT });
+
+  let bounds = popupWindow.getBounds();
+  if (bounds.width !== POPUP_WIDTH || bounds.height !== POPUP_HEIGHT) {
+    // Electron 跨屏幕移动时偶发用移动前所在屏的缩放比例换算尺寸，补设一次
+    popupWindow.setBounds({ x, y, width: POPUP_WIDTH, height: POPUP_HEIGHT });
+  }
+
+  bounds = popupWindow.getBounds();
+  if (bounds.width === POPUP_WIDTH && bounds.height === POPUP_HEIGHT) {
+    return;
+  }
+
+  console.warn(
+    '[Popup] correctPopupSize: size mismatch after two setBounds calls,',
+    `got ${bounds.width}x${bounds.height}, expected ${POPUP_WIDTH}x${POPUP_HEIGHT},`,
+    `visible=${isPopupVisible}`
+  );
+
+  if (isPopupVisible) {
+    // 可见期间（如点击固定按钮）销毁重建会导致页面重载、固定按钮状态
+    // 与主进程脱节，因此改走 setSize（与 setBounds 不同的调用路径），
+    // 仍不正确则留待下次隐藏→显示时重建修复
+    popupWindow.setSize(POPUP_WIDTH, POPUP_HEIGHT);
+    return;
+  }
+
+  // 兜底：仅在隐藏→显示过渡阶段销毁重建，新窗口必然按当前缩放计算尺寸
+  destroyPopupWindow();
+  createPopupWindow({ x, y });
+}
+
+/**
+ * 监听显示器参数（分辨率/缩放比例）变化，弹窗可见时校正其尺寸。
+ * 事件驱动：仅在操作系统通知显示设置变化时执行，空闲时零开销。
+ */
+function bindDisplayCorrection(): void {
+  if (displayListenerBound) return;
+  displayListenerBound = true;
+
+  screen.on('display-metrics-changed', () => {
+    // 弹窗不可见时无需校正，下次显示时会由显示时校正逻辑处理
+    if (!popupWindow || popupWindow.isDestroyed() || !isPopupVisible) return;
+
+    const bounds = popupWindow.getBounds();
+    correctPopupSize(bounds.x, bounds.y);
+  });
+}
+
+/**
  * 创建悬浮详情面板（启动时调用一次，之后复用 show/hide）
  */
-export function createPopupWindow(): void {
+export function createPopupWindow(initialPos?: { x: number; y: number }): void {
   if (popupWindow) {
     return;
   }
 
+  const { x, y } = initialPos ?? { x: -9999, y: -9999 };
+
   popupWindow = new BrowserWindow({
-    x: -9999,
-    y: -9999,
+    x,
+    y,
     width: POPUP_WIDTH,
     height: POPUP_HEIGHT,
     frame: false,
@@ -153,6 +217,8 @@ export function createPopupWindow(): void {
   if (process.env.CQB_DEVTOOLS === '1') {
     popupWindow.webContents.openDevTools({ mode: 'detach' });
   }
+
+  bindDisplayCorrection();
 }
 
 /**
@@ -226,7 +292,7 @@ export function showPopupWindow(mode: 'hover' | 'pinned'): void {
     const config = _getConfigManager()?.getConfig();
     const savedPos = config?.rememberPopupPosition ? config.popupPosition : undefined;
     const { x, y } = savedPos ? clampToScreen(savedPos.x, savedPos.y) : getPopupPosition();
-    popupWindow.setBounds({ x, y, width: POPUP_WIDTH, height: POPUP_HEIGHT });
+    correctPopupSize(x, y);
     isPopupVisible = true;
     popupMode = mode === 'hover' ? PopupMode.Hover : PopupMode.Pinned;
 
@@ -429,6 +495,6 @@ export function resetPopupPosition(): void {
   }
   if (popupWindow && !popupWindow.isDestroyed() && isPopupVisible) {
     const { x, y } = getPopupPosition();
-    popupWindow.setBounds({ x, y, width: POPUP_WIDTH, height: POPUP_HEIGHT });
+    correctPopupSize(x, y);
   }
 }
