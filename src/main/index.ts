@@ -45,6 +45,8 @@ import {
   setupIpcHandlers,
 } from './ipc-handlers';
 
+app.commandLine.appendSwitch('wm-window-animations-disabled');
+
 // 加载 .env 文件
 const envPath = path.join(__dirname, '..', '..', '.env');
 if (fs.existsSync(envPath)) {
