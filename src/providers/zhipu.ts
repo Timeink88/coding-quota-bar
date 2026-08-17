@@ -201,21 +201,53 @@ function calcEstimatedCost(resp: ZhipuModelUsageResponse | null): number {
 }
 
 /**
- * 计算每模型的等效单价（元/百万token），按 96/3/1 比例加权
+ * 按 tokenRatio 加权 cache/input/output 三档价格，得到每模型等效单价（元/百万token）
  */
-function calcModelRates(): Record<string, number> {
+function calcRate(p: ModelPricing): number {
+  return Math.round((
+    TOKEN_RATIO.cache * p.cache +
+    TOKEN_RATIO.input * p.input +
+    TOKEN_RATIO.output * p.output
+  ) * 100) / 100;
+}
+
+/**
+ * 静态 modelRates：仅包含 JSON 里的已知模型。
+ * 主要给 UI 渲染「定价参考表」用，渲染进程可遍历。
+ */
+const STATIC_MODEL_RATES: Record<string, number> = (() => {
   const rates: Record<string, number> = {};
   for (const [name, p] of Object.entries(RAW_MODEL_PRICING)) {
-    rates[name] = Math.round((
-      TOKEN_RATIO.cache * p.cache +
-      TOKEN_RATIO.input * p.input +
-      TOKEN_RATIO.output * p.output
-    ) * 100) / 100;
+    rates[name] = calcRate(p);
+  }
+  return rates;
+})();
+
+/**
+ * 运行时 modelRates：基于本次 API 返回的 modelDataList 构建。
+ * 已知模型用 JSON 里的精确价；未知模型（包括未来 GLM-5.4、6.0 等）走 fallbackModel 兜底。
+ *
+ * 为什么需要这个：STATIC_MODEL_RATES 只含 JSON 里的模型，如果智谱上线新模型后 API 返回
+ * modelDataList 里出现该模型名，TokenChart 的「分模型费用明细」会查不到 rate，导致那行
+ * 显示空、但总费用里又用 calcEstimatedCost() 走了兜底算上了——数据对不上，用户会困惑。
+ * 这里把分模型明细也用同样的兜底策略，保证「总费用 = 明细相加」。
+ */
+function buildRuntimeModelRates(
+  modelDataLists: Array<ZhipuModelUsageResponse['data']['modelDataList'] | undefined>
+): Record<string, number> {
+  const rates: Record<string, number> = { ...STATIC_MODEL_RATES };
+  for (const list of modelDataLists) {
+    if (!list) continue;
+    for (const m of list) {
+      if (rates[m.modelName] !== undefined) continue;  // 已存在（含大小写匹配）就跳过
+      // getPricing() 已含大小写不敏感 + fallbackModel 兜底
+      const pricing = getPricing(m.modelName);
+      if (!pricing) continue;
+      rates[m.modelName] = calcRate(pricing);
+    }
   }
   return rates;
 }
-
-const MODEL_RATES = calcModelRates();
 
 /**
  * 智谱 Coding Plan Provider
@@ -383,7 +415,7 @@ export class ZhipuProvider implements Provider {
         estimatedCost1d: calcEstimatedCost(resp1d),
         estimatedCost7d: calcEstimatedCost(resp7d),
         estimatedCost30d: calcEstimatedCost(resp30d),
-        modelRates: MODEL_RATES,
+        modelRates: buildRuntimeModelRates([resp1d?.data?.modelDataList, resp7d?.data?.modelDataList, resp30d?.data?.modelDataList]),
         mcpHistory1d: this.buildToolHistory(toolResp1d),
         mcpHistory7d: this.buildToolHistory(toolResp7d),
         mcpHistory30d: this.buildToolHistory(toolResp30d),

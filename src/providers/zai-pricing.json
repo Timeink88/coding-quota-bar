@@ -1,5 +1,5 @@
 {
-  "description": "智谱 API 模型定价（元/百万token），来源：https://open.bigmodel.cn/pricing",
+  "description": "智谱 API 模型定价（元/百万token）。GLM-5.1/4.x 等老模型是官方定价（https://open.bigmodel.cn/pricing）；新发布模型（5.2/5.3 等）官方定价页未出，按上一代 × 1.25 估值，见各条 note。",
   "updatedAt": "2026-08-17",
   "tokenRatio": {
     "cache": 0.96,
