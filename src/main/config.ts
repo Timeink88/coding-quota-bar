@@ -336,6 +336,20 @@ export class ConfigManager extends EventEmitter {
   }
 
   /**
+   * === Tier 3: 诊断支持 ===
+   */
+  /** 获取配置文件绝对路径（用于诊断面板"打开配置目录"等） */
+  getConfigPath(): string {
+    return this.configPath;
+  }
+
+  /** 重新从磁盘加载（用于"重新加载配置"按钮） */
+  async reload(): Promise<void> {
+    await this.load();
+    this.emit('changed', this.config);
+  }
+
+  /**
    * 销毁配置管理器
    */
   destroy(): void {
