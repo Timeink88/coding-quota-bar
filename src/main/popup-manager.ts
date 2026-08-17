@@ -7,12 +7,19 @@ const POPUP_WIDTH = 336;
 const POPUP_HEIGHT = 416;
 
 /**
+ * 弹窗尺寸核对容差：部分缩放比例下 DIP 与物理像素换算存在 1-2px 取整
+ * 误差（如请求 336 读回 337），透明窗口下该偏差不可见，视为正常，
+ * 避免误触发销毁重建
+ */
+const SIZE_TOLERANCE = 2;
+
+/**
  * 窗口显示模式
  */
 const enum PopupMode {
   Hover = 'hover',   // 悬浮触发，鼠标离开自动隐藏
   Pinned = 'pinned', // 点击触发，点击外部隐藏
-  Hidden = 'hidden'  // 窗口在屏幕外
+  Hidden = 'hidden'  // 窗口已隐藏（原生 hide）
 }
 
 let popupWindow: BrowserWindow | null = null;
@@ -41,6 +48,13 @@ export function setPopupManagerDeps(deps: {
  */
 function isMemorySavingMode(): boolean {
   return _getConfigManager()?.getConfig()?.memorySavingMode === true;
+}
+
+/**
+ * 性能日志用：当前弹窗运行模式标签
+ */
+function popupModeLabel(): string {
+  return isMemorySavingMode() ? '内存节省' : '常驻';
 }
 
 /**
@@ -124,18 +138,18 @@ function correctPopupSize(x: number, y: number): void {
   popupWindow.setBounds({ x, y, width: POPUP_WIDTH, height: POPUP_HEIGHT });
 
   let bounds = popupWindow.getBounds();
-  if (bounds.width !== POPUP_WIDTH || bounds.height !== POPUP_HEIGHT) {
+  if (!isSizeAcceptable(bounds.width, bounds.height)) {
     // Electron 跨屏幕移动时偶发用移动前所在屏的缩放比例换算尺寸，补设一次
     popupWindow.setBounds({ x, y, width: POPUP_WIDTH, height: POPUP_HEIGHT });
   }
 
   bounds = popupWindow.getBounds();
-  if (bounds.width === POPUP_WIDTH && bounds.height === POPUP_HEIGHT) {
+  if (isSizeAcceptable(bounds.width, bounds.height)) {
     return;
   }
 
   console.warn(
-    '[Popup] correctPopupSize: size mismatch after two setBounds calls,',
+    '[Popup] correctPopupSize: 尺寸偏差超出容差（两次 setBounds 后），',
     `got ${bounds.width}x${bounds.height}, expected ${POPUP_WIDTH}x${POPUP_HEIGHT},`,
     `visible=${isPopupVisible}`
   );
@@ -150,7 +164,14 @@ function correctPopupSize(x: number, y: number): void {
 
   // 兜底：仅在隐藏→显示过渡阶段销毁重建，新窗口必然按当前缩放计算尺寸
   destroyPopupWindow();
-  createPopupWindow({ x, y });
+  createPopupWindow({ x, y }, '尺寸兜底重建');
+}
+
+function isSizeAcceptable(width: number, height: number): boolean {
+  return (
+    Math.abs(width - POPUP_WIDTH) <= SIZE_TOLERANCE &&
+    Math.abs(height - POPUP_HEIGHT) <= SIZE_TOLERANCE
+  );
 }
 
 /**
@@ -173,12 +194,19 @@ function bindDisplayCorrection(): void {
 /**
  * 创建悬浮详情面板（启动时调用一次，之后复用 show/hide）
  */
-export function createPopupWindow(initialPos?: { x: number; y: number }): void {
+export function createPopupWindow(
+  initialPos?: { x: number; y: number },
+  reason: string = '启动预创建'
+): void {
   if (popupWindow) {
     return;
   }
 
-  const { x, y } = initialPos ?? { x: -9999, y: -9999 };
+  const createStart = Date.now();
+
+  // 未指定初始位置时在托盘默认位置创建。隐藏状态下坐标不影响可见性，
+  // 但让窗口与真实显示器保持 DPI 关联，可减少跨屏换算误差
+  const { x, y } = initialPos ?? getPopupPosition();
 
   popupWindow = new BrowserWindow({
     x,
@@ -190,19 +218,25 @@ export function createPopupWindow(initialPos?: { x: number; y: number }): void {
     resizable: false,
     alwaysOnTop: true,
     skipTaskbar: true,
-    show: true,
+    show: false, // 隐藏创建，显示统一由 showPopupWindow 控制
     webPreferences: {
       preload: path.join(__dirname, '..', 'preload', 'index.js'),
       contextIsolation: true,
       nodeIntegration: false
     }
   });
+  const constructedAt = Date.now();
+  console.log(`[Popup] perf: [${popupModeLabel()}] BrowserWindow 构造耗时 ${constructedAt - createStart}ms（${reason}）`);
 
   if (process.env.ELECTRON_RENDERER_URL) {
     popupWindow.loadURL(process.env.ELECTRON_RENDERER_URL);
   } else {
     popupWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
   }
+
+  popupWindow.once('ready-to-show', () => {
+    console.log(`[Popup] perf: [${popupModeLabel()}] 页面就绪耗时 ${Date.now() - createStart}ms（自创建起）`);
+  });
 
   popupWindow.on('closed', () => {
     popupWindow = null;
@@ -249,6 +283,7 @@ export function detachBlurHandler(): void {
  * 隐藏弹出窗口
  */
 export function hidePopupWindow(): void {
+  const hideStart = Date.now();
   if (!popupWindow || popupWindow.isDestroyed()) return;
   detachBlurHandler();
 
@@ -259,34 +294,43 @@ export function hidePopupWindow(): void {
     clearTimeout(savePositionTimer);
     savePositionTimer = null;
     const bounds = popupWindow.getBounds();
-    if (bounds.x > -999 && bounds.y > -999) {
-      _getConfigManager()?.updateConfig({
-        popupPosition: { x: bounds.x, y: bounds.y }
-      }).catch(err => {
-        console.warn('[Popup] Failed to save popup position:', err);
-      });
-    }
+    // 原生 hide() 隐藏后 bounds 恒为真实位置；
+    // 负坐标对主屏左侧的副屏是合法值，不能过滤
+    _getConfigManager()?.updateConfig({
+      popupPosition: { x: bounds.x, y: bounds.y }
+    }).catch(err => {
+      console.warn('[Popup] Failed to save popup position:', err);
+    });
   }
 
-  if (isMemorySavingMode()) {
+  const memorySaving = isMemorySavingMode();
+  if (memorySaving) {
     popupWindow.destroy();
     popupWindow = null;
   } else {
-    popupWindow.setBounds({ x: -9999, y: -9999, width: POPUP_WIDTH, height: POPUP_HEIGHT });
+    // 原生隐藏：不依赖屏幕外坐标，任意多显示器布局下都不会误现，
+    // 录屏/截图也不会拍到屏幕外的窗口
+    popupWindow.hide();
   }
   popupMode = PopupMode.Hidden;
   isLocked = false;
+  console.log(
+    `[Popup] perf: [${memorySaving ? '内存节省' : '常驻'}] ` +
+    `hidePopupWindow 耗时 ${Date.now() - hideStart}ms（${memorySaving ? 'destroy' : 'hide'}）`
+  );
 }
 
 /**
  * 显示弹出窗口
  */
 export function showPopupWindow(mode: 'hover' | 'pinned'): void {
+  const showStart = Date.now();
+  const createdInCall = !popupWindow;
   cancelHide();
   isHoveringWindow = false;
 
   if (!popupWindow) {
-    createPopupWindow();
+    createPopupWindow(undefined, '显示时创建');
   }
   if (popupWindow && !popupWindow.isDestroyed()) {
     const config = _getConfigManager()?.getConfig();
@@ -297,6 +341,7 @@ export function showPopupWindow(mode: 'hover' | 'pinned'): void {
     popupMode = mode === 'hover' ? PopupMode.Hover : PopupMode.Pinned;
 
     if (mode === 'pinned') {
+      popupWindow.show();
       popupWindow.focus();
       if (process.env.CQB_DEVTOOLS === '1') {
         setTimeout(() => {
@@ -307,8 +352,16 @@ export function showPopupWindow(mode: 'hover' | 'pinned'): void {
         attachBlurHandler();
       }
     } else {
+      // 悬浮唤出不抢焦点
+      popupWindow.showInactive();
       detachBlurHandler();
     }
+
+    const suffix = createdInCall ? '（含窗口创建）' : '';
+    console.log(
+      `[Popup] perf: [${popupModeLabel()}] ` +
+      `showPopupWindow('${mode}') 耗时 ${Date.now() - showStart}ms${suffix}`
+    );
   }
 }
 

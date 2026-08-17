@@ -1,3 +1,4 @@
+import './logger'; // 必须最先导入：在其余模块输出日志前完成生产环境屏蔽
 import { app, BrowserWindow } from 'electron';
 import * as fs from 'node:fs';
 import * as path from 'path';
@@ -355,7 +356,7 @@ function setupConfigListeners(): void {
         destroyPopupWindow();
         console.log('[App] Memory saving mode enabled, destroyed hidden window');
       } else if (!newConfig.memorySavingMode && !getPopupWindow()) {
-        createPopupWindow();
+        createPopupWindow(undefined, '设置变更');
         console.log('[App] Memory saving mode disabled, pre-created window');
       }
     }
@@ -396,7 +397,7 @@ app.whenReady().then(() => {
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      createPopupWindow();
+      createPopupWindow(undefined, '应用激活');
     }
   });
 });
