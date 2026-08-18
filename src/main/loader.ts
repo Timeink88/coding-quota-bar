@@ -5,6 +5,7 @@ import { KimiProvider } from '../providers/kimi';
 import { DeepSeekProvider } from '../providers/deepseek';
 import { MiMoProvider } from '../providers/mimo';
 import { CodexProvider } from '../providers/codex';
+import { OpenCodeGoProvider } from '../providers/opencode-go';
 import buildConfig from '../../app.build';
 
 /**
@@ -17,6 +18,7 @@ const PROVIDER_CLASSES = {
   deepseek: DeepSeekProvider,
   mimo: MiMoProvider,
   codex: CodexProvider,
+  'opencode-go': OpenCodeGoProvider,
 } as const;
 
 /**

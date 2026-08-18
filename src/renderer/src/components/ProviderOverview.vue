@@ -142,6 +142,12 @@ function selectPrimaryMetric(providerKey: string, account: AccountUsageData): Ov
     return balanceMetric(account)
   }
 
+  if (providerKey === 'opencode-go') {
+    // 5h 滚动窗口是最该盯的——重置最快；weekly/monthly 走 secondary
+    const rolling = account.quotas.find(q => q.limitType === '5h')
+    return quotaMetric(rolling, t('quota.opencodeGo5h'))
+  }
+
   return quotaMetric(findTightestQuota(account.quotas), t('overview.primaryQuota'))
 }
 
@@ -171,6 +177,12 @@ function selectSecondaryMetrics(providerKey: string, account: AccountUsageData):
           .filter(q => q.label === 'quota.deepseekGranted' || q.label === 'quota.deepseekToppedUp')
           .map(q => ({ label: t(q.label), value: formatCurrency(q.total, q.currency || account.currency) }))
     return details.filter(d => d.value).map(d => ({ ...d, color: 'neutral' as const }))
+  }
+
+  if (providerKey === 'opencode-go') {
+    return account.quotas
+      .filter(q => q.limitType === 'weekly' || q.limitType === 'monthly')
+      .map(q => secondaryFromQuota(q))
   }
 
   return account.quotas

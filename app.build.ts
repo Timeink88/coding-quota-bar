@@ -11,5 +11,6 @@ export default {
     { key: 'kimi', available: false, envVar: 'KIMI_API_KEY', baseUrl: '', websiteUrl: '' },
     { key: 'mimo', available: true, envVar: '', baseUrl: 'https://platform.xiaomimimo.com', websiteUrl: 'https://platform.xiaomimimo.com/console/plan-manage' },
     { key: 'codex', available: true, envVar: '', baseUrl: 'https://chatgpt.com', websiteUrl: 'https://chatgpt.com/' },
+    { key: 'opencode-go', available: true, envVar: 'OPENCODE_API_KEY', baseUrl: 'https://opencode.ai', websiteUrl: 'https://opencode.ai/auth' },
   ],
 } as const;

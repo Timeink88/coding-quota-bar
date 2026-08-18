@@ -30,6 +30,7 @@ export interface AccountDisplayData {
   id: string;
   label?: string;
   level?: string;
+  authMode?: 'apikey' | 'weblogin';
   subscription?: import('../shared/types').SubscriptionInfo;
   error?: string;
   currency?: string;
@@ -131,6 +132,16 @@ function getAccountLabel(type: string, accountId: string): string {
 }
 
 /**
+ * 获取账户认证模式
+ */
+function getAccountAuthMode(type: string, accountId: string): 'apikey' | 'weblogin' | undefined {
+  const config = _getConfigManager()?.getConfig();
+  const providerConfig = config?.providers[type] as ProviderTypeConfig | undefined;
+  const account = providerConfig?.accounts.find(a => a.id === accountId);
+  return account?.authMode;
+}
+
+/**
  * 获取 Provider 显示名称
  */
 function getProviderDisplayName(type: string): string {
@@ -185,6 +196,7 @@ function convertAccountData(
     id: accountId,
     label: getAccountLabel(type, accountId) || undefined,
     level: result.level,
+    authMode: getAccountAuthMode(type, accountId),
     subscription: result.details?.subscription as import('../shared/types').SubscriptionInfo | undefined,
     error: result.error,
     currency: (result.details?.currency as string) || undefined,
