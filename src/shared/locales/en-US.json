@@ -189,6 +189,7 @@
     "about": "About",
     "checkUpdate": "Check for Updates",
     "resetPosition": "Reset Popup Position",
+    "resetSize": "Reset Window Size",
     "quit": "Quit"
   },
   "providers": {

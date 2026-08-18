@@ -18,6 +18,7 @@ import {
   getPopupWindow,
   isPopupVisibleNow,
   resetPopupPosition,
+  resetPopupSize,
 } from './popup-manager';
 import {
   setUpdateManagerDeps,
@@ -141,6 +142,9 @@ async function initialize(): Promise<void> {
     },
     onResetPopupPosition: () => {
       resetPopupPosition();
+    },
+    onResetPopupSize: () => {
+      resetPopupSize();
     },
     onQuit: () => {
       app.quit();

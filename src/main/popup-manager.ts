@@ -646,3 +646,19 @@ export function resetPopupPosition(): void {
     correctPopupSize(x, y);
   }
 }
+
+/**
+ * 重置弹窗尺寸为默认值（位置保持不变）
+ */
+export function resetPopupSize(): void {
+  const configManager = _getConfigManager();
+  if (configManager) {
+    configManager.updateConfig({ popupSize: undefined }).catch(err => {
+      console.warn('[Popup] Failed to reset popup size:', err);
+    });
+  }
+  if (popupWindow && !popupWindow.isDestroyed() && isPopupVisible) {
+    const bounds = popupWindow.getBounds();
+    popupWindow.setBounds({ x: bounds.x, y: bounds.y, width: POPUP_WIDTH, height: POPUP_HEIGHT });
+  }
+}
