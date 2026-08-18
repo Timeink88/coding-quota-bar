@@ -492,11 +492,28 @@ export function setupIpcHandlers(): void {
    */
   const RENDERER_LOG = join(app.getPath('userData'), 'renderer-errors.log')
 
+  /**
+   * 写 log 前 redact 敏感字段，防止 console.error('Failed:', apiKey)
+   * 这种开发误用把明文 key 写进用户本地 log 文件
+   * 规则：1) 替换 32+ 字符 hex 串为 ***；2) 替换 sk-xxx 格式为 ***；
+   *       3) 替换 Bearer xxx 为 ***；4) 替换 key=xxx / apiKey: "xxx" 形式
+   */
+  function redactSensitive(s: string): string {
+    return s
+      .replace(/[0-9a-fA-F]{32,}/g, '[REDACTED-hex]')
+      .replace(/sk-[a-zA-Z0-9_\-]{20,}/g, '[REDACTED-sk]')
+      .replace(/Bearer [a-zA-Z0-9_\-\.]{20,}/g, 'Bearer [REDACTED]')
+      .replace(/(api[Kk]ey|webToken|password|secret|token|key)['"]?\s*[:=]\s*['"]?[^,;\s}"']{16,}/g, '$1=[REDACTED]')
+  }
+
   ipcMain.on('renderer-error', (_, payload: { message: string; stack?: string; source?: string }) => {
-    const line = JSON.stringify({
+    const safePayload = {
       ts: new Date().toISOString(),
-      ...payload,
-    }) + '\n'
+      source: payload.source,
+      message: redactSensitive(payload.message ?? ''),
+      stack: payload.stack ? redactSensitive(payload.stack) : undefined,
+    }
+    const line = JSON.stringify(safePayload) + '\n'
     appendFile(RENDERER_LOG, line, 'utf8').catch(e => console.error('[Log] failed:', e))
   })
 
