@@ -502,6 +502,12 @@ onUnmounted(() => {
   opacity: 1;
   margin-bottom: 8px;
   padding: 2px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  scrollbar-gutter: stable;
+}
+.provider-tabs.expanded::-webkit-scrollbar {
+  display: none;
 }
 
 .provider-tab {
@@ -514,6 +520,7 @@ onUnmounted(() => {
   cursor: pointer;
   white-space: nowrap;
   transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+  flex-shrink: 0;
 }
 .provider-tab:hover {
   color: var(--text-secondary);
@@ -560,6 +567,15 @@ onUnmounted(() => {
   min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
+  /* 修：左右留 padding 让 tab border 不贴边（之前 border 直接贴容器边缘
+     看起来像滚动条边框） */
+  padding: 0 4px;
+  /* 修：底部留 3px 给滚动条专属空间，避免覆盖下面 QuotaCard 文字 */
+  padding-bottom: 3px;
+  /* 修：IE/旧 Edge 隐藏滚动条 */
+  -ms-overflow-style: none;
+  /* 修：scrollbar-gutter stable 即使没滚动条也预留位置，避免布局抖动 */
+  scrollbar-gutter: stable;
 }
 .account-tabs::-webkit-scrollbar {
   display: none;
@@ -576,6 +592,8 @@ onUnmounted(() => {
   transition: all 0.15s;
   white-space: nowrap;
   line-height: 1;
+  /* 修：账号多时不被压缩（之前 flex-shrink: 1 会让按钮变窄、文字截断） */
+  flex-shrink: 0;
 }
 .account-tab:hover {
   border-color: var(--border-default);
