@@ -109,7 +109,9 @@ body {
 
 .app {
   width: 320px;
-  height: 400px;
+  /* 填满视口高度（body 上下各 8px padding），窗口纵向可调时内容跟随铺开 */
+  height: calc(100vh - 16px);
+  min-height: 400px;
   display: flex;
   flex-direction: column;
   background: var(--bg-app);

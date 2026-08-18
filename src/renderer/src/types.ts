@@ -173,6 +173,7 @@ export interface AppConfig {
   lastAutoCheckTime?: string | null
   updateStatus?: UpdateStatus
   popupPosition?: { x: number; y: number }
+  popupSize?: { width: number; height: number }
   rememberPopupPosition?: boolean
 }
 

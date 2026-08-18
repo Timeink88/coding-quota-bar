@@ -30,6 +30,7 @@ let isHoveringWindow = false;
 let isPopupVisible = false;
 let hideTimer: ReturnType<typeof setTimeout> | null = null;
 let savePositionTimer: ReturnType<typeof setTimeout> | null = null;
+let saveSizeTimer: ReturnType<typeof setTimeout> | null = null;
 let blurHandler: (() => void) | null = null;
 let displayListenerBound = false;
 
@@ -59,26 +60,41 @@ function popupModeLabel(): string {
 }
 
 /**
+ * 解析弹窗目标尺寸：宽度恒定，高度取用户上次调整值（无则默认）
+ * 高度上限钳制到主显示器工作区高度，防止异常配置导致窗口超出屏幕不可用
+ */
+function getTargetSize(): { width: number; height: number } {
+  const saved = _getConfigManager()?.getConfig()?.popupSize;
+  const maxH = screen.getPrimaryDisplay().workAreaSize.height;
+  let height = POPUP_HEIGHT;
+  if (saved && Number.isFinite(saved.height) && saved.height > POPUP_HEIGHT) {
+    height = Math.min(Math.round(saved.height), maxH);
+  }
+  return { width: POPUP_WIDTH, height };
+}
+
+/**
  * 计算弹出窗口位置：在托盘图标上方居中显示
  */
 function getPopupPosition(): { x: number; y: number } {
   const trayBounds = _getTrayManager()?.getBounds();
   const primaryDisplay = screen.getPrimaryDisplay();
   const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
+  const { height: popupHeight } = getTargetSize();
 
   let x: number;
   let y: number;
 
   if (trayBounds) {
     x = Math.round(trayBounds.x + trayBounds.width / 2 - POPUP_WIDTH / 2);
-    y = Math.round(trayBounds.y - POPUP_HEIGHT);
+    y = Math.round(trayBounds.y - popupHeight);
   } else {
     x = screenWidth - POPUP_WIDTH;
-    y = screenHeight - POPUP_HEIGHT;
+    y = screenHeight - popupHeight;
   }
 
   x = Math.max(0, Math.min(x, screenWidth - POPUP_WIDTH));
-  y = Math.max(0, Math.min(y, screenHeight - POPUP_HEIGHT));
+  y = Math.max(0, Math.min(y, screenHeight - popupHeight));
 
   return { x, y };
 }
@@ -89,10 +105,11 @@ function getPopupPosition(): { x: number; y: number } {
  */
 function clampToScreen(x: number, y: number): { x: number; y: number } {
   const displays = screen.getAllDisplays();
+  const { height: popupHeight } = getTargetSize();
   for (const display of displays) {
     const { x: dx, y: dy, width, height } = display.workArea;
     // 窗口有任意部分与显示器工作区重叠，保留用户原始位置
-    if (x + POPUP_WIDTH > dx && x < dx + width && y + POPUP_HEIGHT > dy && y < dy + height) {
+    if (x + POPUP_WIDTH > dx && x < dx + width && y + popupHeight > dy && y < dy + height) {
       return { x, y };
     }
   }
@@ -125,6 +142,30 @@ function scheduleSavePosition(): void {
 }
 
 /**
+ * 延迟保存弹窗尺寸到配置（防抖）
+ * 与位置不同：尺寸按需求无条件记忆，不受 rememberPopupPosition 开关控制
+ */
+function scheduleSaveSize(): void {
+  if (!popupWindow || popupWindow.isDestroyed()) return;
+  if (saveSizeTimer) {
+    clearTimeout(saveSizeTimer);
+  }
+  saveSizeTimer = setTimeout(() => {
+    saveSizeTimer = null;
+    if (!popupWindow || popupWindow.isDestroyed()) return;
+    const bounds = popupWindow.getBounds();
+    const configManager = _getConfigManager();
+    if (configManager) {
+      configManager.updateConfig({
+        popupSize: { width: bounds.width, height: bounds.height }
+      }).catch(err => {
+        console.warn('[Popup] Failed to save popup size:', err);
+      });
+    }
+  }, 500);
+}
+
+/**
  * 校正弹窗尺寸
  *
  * 显示器缩放比例变化后，窗口内容会立即按新比例渲染，但窗口物理尺寸
@@ -136,22 +177,29 @@ function scheduleSavePosition(): void {
 function correctPopupSize(x: number, y: number): void {
   if (!popupWindow || popupWindow.isDestroyed()) return;
 
-  popupWindow.setBounds({ x, y, width: POPUP_WIDTH, height: POPUP_HEIGHT });
+  // 弹窗可见期间以窗口当前实际尺寸为目标（用户可能刚调整过、防抖保存尚未落盘），
+  // 避免显示器参数变化等场景把窗口弹回旧尺寸；隐藏→显示过渡期则取持久化尺寸
+  const current = popupWindow.getBounds();
+  const target = isPopupVisible
+    ? { width: Math.max(POPUP_WIDTH, current.width), height: Math.max(POPUP_HEIGHT, current.height) }
+    : getTargetSize();
+
+  popupWindow.setBounds({ x, y, width: target.width, height: target.height });
 
   let bounds = popupWindow.getBounds();
-  if (!isSizeAcceptable(bounds.width, bounds.height)) {
+  if (!isSizeAcceptable(bounds.width, bounds.height, target)) {
     // Electron 跨屏幕移动时偶发用移动前所在屏的缩放比例换算尺寸，补设一次
-    popupWindow.setBounds({ x, y, width: POPUP_WIDTH, height: POPUP_HEIGHT });
+    popupWindow.setBounds({ x, y, width: target.width, height: target.height });
   }
 
   bounds = popupWindow.getBounds();
-  if (isSizeAcceptable(bounds.width, bounds.height)) {
+  if (isSizeAcceptable(bounds.width, bounds.height, target)) {
     return;
   }
 
   console.warn(
     '[Popup] correctPopupSize: 尺寸偏差超出容差（两次 setBounds 后），',
-    `got ${bounds.width}x${bounds.height}, expected ${POPUP_WIDTH}x${POPUP_HEIGHT},`,
+    `got ${bounds.width}x${bounds.height}, expected ${target.width}x${target.height},`,
     `visible=${isPopupVisible}`
   );
 
@@ -159,7 +207,7 @@ function correctPopupSize(x: number, y: number): void {
     // 可见期间（如点击固定按钮）销毁重建会导致页面重载、固定按钮状态
     // 与主进程脱节，因此改走 setSize（与 setBounds 不同的调用路径），
     // 仍不正确则留待下次隐藏→显示时重建修复
-    popupWindow.setSize(POPUP_WIDTH, POPUP_HEIGHT);
+    popupWindow.setSize(target.width, target.height);
     return;
   }
 
@@ -168,10 +216,10 @@ function correctPopupSize(x: number, y: number): void {
   createPopupWindow({ x, y }, '尺寸兜底重建');
 }
 
-function isSizeAcceptable(width: number, height: number): boolean {
+function isSizeAcceptable(width: number, height: number, target: { width: number; height: number }): boolean {
   return (
-    Math.abs(width - POPUP_WIDTH) <= SIZE_TOLERANCE &&
-    Math.abs(height - POPUP_HEIGHT) <= SIZE_TOLERANCE
+    Math.abs(width - target.width) <= SIZE_TOLERANCE &&
+    Math.abs(height - target.height) <= SIZE_TOLERANCE
   );
 }
 
@@ -208,15 +256,16 @@ export function createPopupWindow(
   // 未指定初始位置时在托盘默认位置创建。隐藏状态下坐标不影响可见性，
   // 但让窗口与真实显示器保持 DPI 关联，可减少跨屏换算误差
   const { x, y } = initialPos ?? getPopupPosition();
+  const { width: targetWidth, height: targetHeight } = getTargetSize();
 
   popupWindow = new BrowserWindow({
     x,
     y,
-    width: POPUP_WIDTH,
-    height: POPUP_HEIGHT,
+    width: targetWidth,
+    height: targetHeight,
     frame: false,
     transparent: true,
-    resizable: false,
+    resizable: true,
     alwaysOnTop: true,
     skipTaskbar: true,
     show: false, // 隐藏创建，显示统一由 showPopupWindow 控制
@@ -226,6 +275,9 @@ export function createPopupWindow(
       nodeIntegration: false
     }
   });
+  // 仅放开纵向调整：最小/最大宽度相同锁死横向，高度下限为默认值、上不封顶
+  popupWindow.setMinimumSize(POPUP_WIDTH, POPUP_HEIGHT);
+  popupWindow.setMaximumSize(POPUP_WIDTH, 10000);
   const constructedAt = Date.now();
   console.log(`[Popup] perf: [${popupModeLabel()}] BrowserWindow 构造耗时 ${constructedAt - createStart}ms（${reason}）`);
 
@@ -246,6 +298,12 @@ export function createPopupWindow(
   popupWindow.on('move', () => {
     if (isPopupVisible) {
       scheduleSavePosition();
+    }
+  });
+
+  popupWindow.on('resize', () => {
+    if (isPopupVisible) {
+      scheduleSaveSize();
     }
   });
 
@@ -309,6 +367,18 @@ export function hidePopupWindow(): void {
       popupPosition: { x: bounds.x, y: bounds.y }
     }).catch(err => {
       console.warn('[Popup] Failed to save popup position:', err);
+    });
+  }
+
+  // 有未保存的尺寸（用户刚调整过），立即保存再隐藏，避免丢失
+  if (saveSizeTimer) {
+    clearTimeout(saveSizeTimer);
+    saveSizeTimer = null;
+    const bounds = popupWindow.getBounds();
+    _getConfigManager()?.updateConfig({
+      popupSize: { width: bounds.width, height: bounds.height }
+    }).catch(err => {
+      console.warn('[Popup] Failed to save popup size:', err);
     });
   }
 
@@ -550,6 +620,10 @@ export function destroyPopupWindow(): void {
   if (savePositionTimer) {
     clearTimeout(savePositionTimer);
     savePositionTimer = null;
+  }
+  if (saveSizeTimer) {
+    clearTimeout(saveSizeTimer);
+    saveSizeTimer = null;
   }
   if (popupWindow && !popupWindow.isDestroyed()) {
     popupWindow.destroy();

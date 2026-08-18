@@ -190,6 +190,7 @@ export interface AppConfig {
   autoCheckUpdateInterval?: number;
   lastAutoCheckTime?: string | null;
   popupPosition?: { x: number; y: number };
+  popupSize?: { width: number; height: number };
   rememberPopupPosition?: boolean;
 }
 
