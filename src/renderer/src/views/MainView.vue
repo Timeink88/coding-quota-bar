@@ -366,9 +366,15 @@ function handleUpdateBannerClick() {
   emit('open-settings', { checkUpdate: true })
 }
 
-setInterval(() => { now.value = Date.now() }, 60000)
+// 1 分钟刷一次 "x 分钟前" 显示；用 handle 保存以便卸载清理
+// 否则每次弹窗开关都泄漏一个 timer
+let nowTimer: ReturnType<typeof setInterval> | null = null
 
 onMounted(async () => {
+  // 启动 now 刷新 timer（与其他副作用合并到同一个 onMounted）
+  if (nowTimer === null) {
+    nowTimer = setInterval(() => { now.value = Date.now() }, 60000)
+  }
   fetchData()
   // 监听主进程推送的数据更新
   window.electronAPI.onUsageDataUpdated((data) => {
@@ -396,6 +402,11 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  // 清理 now timer（与其他卸载清理合并）
+  if (nowTimer !== null) {
+    clearInterval(nowTimer)
+    nowTimer = null
+  }
   offUpdateStatus?.()
 })
 </script>

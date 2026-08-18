@@ -900,8 +900,21 @@ function handleUpdateClick() {
  * === Tier 1: 测试连接 ===
  * 用当前填的 key（如果 dirty）或已保存的 key 调一次 fetchUsage
  */
+// 5s 后自动清除成功状态的 timer handle（按 key 索引）
+// 解决：连续点击同一 key 时取消上一次的延迟清除，避免状态错乱
+const testAutoClearTimers = new Map<string, ReturnType<typeof setTimeout>>()
+function clearTestAutoClearTimer(key: string) {
+  const t = testAutoClearTimers.get(key)
+  if (t) {
+    clearTimeout(t)
+    testAutoClearTimers.delete(key)
+  }
+}
+
 async function testConnection(info: ProviderInfo, account: AccountInfo) {
   const key = `${info.key}:${account.id}`
+  // 取消该 key 上一次的"5s 后自动清除"timer，避免与新测试状态冲突
+  clearTestAutoClearTimer(key)
   testStates.value[key] = { status: 'testing' }
   // 客户端保险：IPC 自身卡死时也能 bail（12s > 后端 8s，留 4s 余量）
   let timeoutHandle: ReturnType<typeof setTimeout> | undefined
@@ -938,9 +951,11 @@ async function testConnection(info: ProviderInfo, account: AccountInfo) {
   }
   // 5 秒后自动清除成功状态
   if (testStates.value[key].status === 'success') {
-    setTimeout(() => {
+    const handle = setTimeout(() => {
       if (testStates.value[key]?.status === 'success') testStates.value[key] = { status: 'idle' }
+      testAutoClearTimers.delete(key)
     }, 5000)
+    testAutoClearTimers.set(key, handle)
   }
 }
 
@@ -978,6 +993,9 @@ onMounted(() => {
 })
 onUnmounted(() => {
   window.removeEventListener('beforeunload', handleBeforeUnload)
+  // 清理所有 test connection 延迟清除 timer，避免组件销毁后还在跑
+  for (const handle of testAutoClearTimers.values()) clearTimeout(handle)
+  testAutoClearTimers.clear()
 })
 
 /**
