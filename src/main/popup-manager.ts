@@ -1,5 +1,6 @@
 import { BrowserWindow, screen } from 'electron';
 import * as path from 'path';
+import type { WindowPinMode } from '../shared/types';
 import type { ConfigManager } from './config';
 import type { TrayManager } from './tray';
 
@@ -24,7 +25,7 @@ const enum PopupMode {
 
 let popupWindow: BrowserWindow | null = null;
 let popupMode: PopupMode = PopupMode.Hidden;
-let isLocked = false;
+let pinMode: WindowPinMode = 'unpinned';
 let isHoveringWindow = false;
 let isPopupVisible = false;
 let hideTimer: ReturnType<typeof setTimeout> | null = null;
@@ -260,7 +261,7 @@ export function createPopupWindow(
  */
 export function attachBlurHandler(): void {
   detachBlurHandler();
-  if (isLocked) return;
+  if (pinMode !== 'unpinned') return;
   blurHandler = () => {
     if (popupMode === PopupMode.Pinned) {
       hidePopupWindow();
@@ -277,6 +278,14 @@ export function detachBlurHandler(): void {
     popupWindow.off('blur', blurHandler);
     blurHandler = null;
   }
+}
+
+/**
+ * 按当前固定状态应用置顶属性：固定不置顶（桌面模式）取消置顶，其余恒为置顶
+ * 覆盖内存节省模式 / 尺寸兜底导致的窗口重建后 alwaysOnTop 复位为 true 的场景
+ */
+function applyAlwaysOnTop(): void {
+  popupWindow?.setAlwaysOnTop(pinMode !== 'pinned-desktop');
 }
 
 /**
@@ -303,6 +312,15 @@ export function hidePopupWindow(): void {
     });
   }
 
+  popupMode = PopupMode.Hidden;
+  // 隐藏即重置固定状态：恢复置顶属性，并同步 renderer 按钮状态，
+  // 避免固定（尤其桌面模式）状态跨显示周期残留
+  if (pinMode !== 'unpinned') {
+    pinMode = 'unpinned';
+    popupWindow.setAlwaysOnTop(true);
+    popupWindow.webContents.send('window-pinned-state', 'unpinned');
+  }
+
   const memorySaving = isMemorySavingMode();
   if (memorySaving) {
     popupWindow.destroy();
@@ -312,8 +330,6 @@ export function hidePopupWindow(): void {
     // 录屏/截图也不会拍到屏幕外的窗口
     popupWindow.hide();
   }
-  popupMode = PopupMode.Hidden;
-  isLocked = false;
   console.log(
     `[Popup] perf: [${memorySaving ? '内存节省' : '常驻'}] ` +
     `hidePopupWindow 耗时 ${Date.now() - hideStart}ms（${memorySaving ? 'destroy' : 'hide'}）`
@@ -339,6 +355,7 @@ export function showPopupWindow(mode: 'hover' | 'pinned'): void {
     correctPopupSize(x, y);
     isPopupVisible = true;
     popupMode = mode === 'hover' ? PopupMode.Hover : PopupMode.Pinned;
+    applyAlwaysOnTop();
 
     if (mode === 'pinned') {
       popupWindow.show();
@@ -425,10 +442,14 @@ export function getPopupMode(): string {
 }
 
 /**
- * 设置窗口锁定状态
+ * 设置窗口固定状态（三态：不固定 / 固定置顶 / 固定不置顶）
  */
-export function setWindowLocked(locked: boolean): void {
-  isLocked = locked;
+export function setWindowPinMode(mode: WindowPinMode): void {
+  pinMode = mode;
+  applyAlwaysOnTop();
+  if (popupMode === PopupMode.Pinned) {
+    mode !== 'unpinned' ? detachBlurHandler() : attachBlurHandler();
+  }
 }
 
 /**

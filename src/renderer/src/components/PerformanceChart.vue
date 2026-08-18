@@ -158,7 +158,7 @@ const chartOptions = computed(() => {
       },
       y: {
         min: yMin, max: yMax,
-        ticks: { color: isDark.value ? '#666' : '#999', font: { size: 8 }, maxTicksLimit: 4, callback: (v: number) => v.toFixed(0) },
+        ticks: { color: isDark.value ? '#666' : '#999', font: { size: 8 }, maxTicksLimit: 4, callback: (v: string | number) => Number(v).toFixed(0) },
         grid: { color: isDark.value ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' },
         border: { display: false }
       }

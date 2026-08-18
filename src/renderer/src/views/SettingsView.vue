@@ -424,7 +424,7 @@ onMounted(async () => {
 
   providerList.value = availableKeys.map(key => {
     const providerConfig = config.providers[key] as ProviderTypeConfig | undefined
-    const accounts = (providerConfig?.accounts ?? []).map((account: AccountConfig) => ({
+    const accounts: AccountInfo[] = (providerConfig?.accounts ?? []).map((account: AccountConfig): AccountInfo => ({
       id: account.id,
       label: account.label ?? '',
       enabled: account.enabled ?? false,
@@ -534,17 +534,17 @@ async function saveConfig() {
   saveStatus.value = t('settings.saving')
   saveError.value = false
 
-  const providers: Record<string, ProviderTypeConfig> = {}
+  const providers: Record<string, { accounts: Partial<AccountConfig>[] }> = {}
   for (const info of providerList.value) {
     providers[info.key] = {
-      accounts: info.accounts.map(a => {
-        const update: Record<string, unknown> = {
+      accounts: info.accounts.map((a): Partial<AccountConfig> => {
+        const update: Partial<AccountConfig> = {
           id: a.id,
           label: a.label,
           enabled: a.enabled,
-          ...(a.budget != null ? { budget: a.budget } : {}),
           authMode: a.authMode,
         }
+        if (a.budget != null) update.budget = a.budget
         if (a.apiKeyDirty) {
           update.apiKey = a.apiKey
           a.apiKeyDirty = false

@@ -331,7 +331,7 @@ const tokenChartOpts = computed(() => ({
     },
     y: {
       stacked: true,
-      ticks: { color: isDark.value ? '#666' : '#999', font: { size: 8 }, callback: (v: number) => formatCount(v), maxTicksLimit: 4 },
+      ticks: { color: isDark.value ? '#666' : '#999', font: { size: 8 }, callback: (v: string | number) => formatCount(Number(v)), maxTicksLimit: 4 },
       grid: { color: isDark.value ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)' },
       border: { display: false },
     },

@@ -1,7 +1,9 @@
 /**
  * Renderer 进程共享类型定义
  */
-import type { TrayDisplayRule } from '../../shared/types'
+import type { TrayDisplayRule, WindowPinMode } from '../../shared/types'
+
+export type { WindowPinMode }
 
 export interface SubscriptionInfo {
   plan: string
@@ -170,6 +172,8 @@ export interface AppConfig {
   autoCheckUpdateInterval?: number
   lastAutoCheckTime?: string | null
   updateStatus?: UpdateStatus
+  popupPosition?: { x: number; y: number }
+  rememberPopupPosition?: boolean
 }
 
 export type ApiFormat = 'openai' | 'anthropic'
@@ -208,6 +212,27 @@ export interface ConcurrencyTestResult {
   requestDetails?: RequestMetrics[]
 }
 
+export interface ConcurrencyTestProgress {
+  index: number
+  total: number
+  success: boolean
+  ttftMs: number
+  totalMs: number
+  tokenCount: number
+  tokensPerSec: number
+  error?: string
+}
+
+export interface ConcurrencyTestStreamInfo {
+  index: number
+  text: string
+}
+
+export interface ConcurrencyTestFirstContentInfo {
+  index: number
+  total: number
+}
+
 export interface ElectronAPI {
   getDevMode: () => Promise<boolean>
   getUsageData: () => Promise<UsageState | null>
@@ -226,16 +251,18 @@ export interface ElectronAPI {
   offTriggerCheckUpdate: (callback: () => void) => void
   openExternal: (url: string) => Promise<void>
   showPopup: () => void
-  setWindowPinned: (pinned: boolean) => void
-  onWindowPinnedState: (callback: (pinned: boolean) => void) => void
+  setWindowPinned: (mode: WindowPinMode) => void
+  onWindowPinnedState: (callback: (mode: WindowPinMode) => void) => void
   getAppVersion: () => Promise<string>
   concurrencyTestStart: (config: ConcurrencyTestConfig) => Promise<ConcurrencyTestResult>
   concurrencyTestGetHistory: (providerKey: string) => Promise<ConcurrencyTestResult[]>
   concurrencyTestDelete: (providerKey: string, id: string) => Promise<void>
-  onConcurrencyTestProgress: (callback: (progress: { index: number; total: number; success: boolean }) => void) => void
-  offConcurrencyTestProgress: (callback: (progress: { index: number; total: number; success: boolean }) => void) => void
-  onConcurrencyTestStream: (callback: (text: string) => void) => void
-  offConcurrencyTestStream: (callback: (text: string) => void) => void
+  onConcurrencyTestProgress: (callback: (progress: ConcurrencyTestProgress) => void) => void
+  offConcurrencyTestProgress: (callback: (progress: ConcurrencyTestProgress) => void) => void
+  onConcurrencyTestStream: (callback: (info: ConcurrencyTestStreamInfo) => void) => void
+  offConcurrencyTestStream: (callback: (info: ConcurrencyTestStreamInfo) => void) => void
+  onConcurrencyTestFirstContent: (callback: (info: ConcurrencyTestFirstContentInfo) => void) => void
+  offConcurrencyTestFirstContent: (callback: (info: ConcurrencyTestFirstContentInfo) => void) => void
   deepseekWebLogin: (accountId: string) => Promise<{ success: boolean; error?: string }>
   deepseekWebLogout: (accountId: string) => Promise<void>
   onDeepseekWebLoginSuccess: (callback: (accountId: string) => void) => void
@@ -247,6 +274,7 @@ export interface ElectronAPI {
   opencodegoWebLogin: (accountId: string) => Promise<{ success: boolean; error?: string }>
   opencodegoWebLogout: (accountId: string) => Promise<void>
   onOpencodegoWebLoginSuccess: (callback: (accountId: string) => void) => void
+  showFeedback: () => void
 }
 
 declare global {

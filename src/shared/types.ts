@@ -165,6 +165,11 @@ export interface UpdateStatus {
  */
 export type TrayDisplayRule = 'lowest' | 'highest' | string; // string = compound key "providerType:accountId"
 
+/**
+ * 窗口固定状态（header 固定按钮三态）
+ */
+export type WindowPinMode = 'unpinned' | 'pinned-top' | 'pinned-desktop';
+
 export interface AppConfig {
   refreshInterval: number;
   providers: Record<string, ProviderTypeConfig>;
