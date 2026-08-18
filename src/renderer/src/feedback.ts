@@ -8,8 +8,9 @@ app.use(i18n)
 
 // 从主进程获取语言设置
 window.electronAPI.getConfig().then(config => {
-  if (config?.language) {
-    i18n.global.locale.value = config.language
+  const lang = config?.language
+  if (lang === 'en-US' || lang === 'zh-CN') {
+    i18n.global.locale.value = lang
   }
 })
 

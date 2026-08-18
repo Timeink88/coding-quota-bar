@@ -167,6 +167,8 @@
           class="status-dot"
           :class="freshnessClass"
           :title="freshnessTitle"
+          role="status"
+          :aria-label="freshnessTitle"
         ></span>
         <span>{{ lastUpdateText }}</span>
       </span>

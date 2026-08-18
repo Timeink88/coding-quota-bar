@@ -1,4 +1,34 @@
 # Changelog
+## [1.6.0] - 2026-08-18
+### Added
+- 智谱 GLM-5.3 定价数据 + 兜底模型升级到 GLM-5.2（API 即将开放、权重两周后开源时使用）
+- 设置页"测试连接"按钮：API Key 旁加 ⚡，后端调 fetchUsage 验证有效性，显示耗时/错误
+- 设置页 Provider 卡片状态徽标：标题旁加 🟢/🟡/⚪ 小圆点显示多账号总状态
+- 设置页未保存提示：顶部黄色横幅 + 立即保存按钮 + 离开页面 beforeunload 警告
+- 设置页颜色配置重做：阈值带滑块 + 3 张实时预览卡 + 颜色选择器
+- 设置页顶部搜索框 + section 可点击折叠：7 个 provider 5 个 toggle 4 个 select 全可过滤
+- 设置页导入/导出：脱敏/完整两种导出，导入前弹确认卡防误覆盖
+- 设置页诊断面板：显示配置文件路径 + 打开目录 + 重新加载 + 批量 ping 所有 provider
+- 主面板数字平滑过渡（useAnimatedNumber composable）：rAF + easeOutCubic，涨/跌配 ↑↓ 箭头
+- 主面板 HSL 渐变进度条：连续色阶替代离散三色，绿(142°) → 黄 → 红(0°)
+- 主面板 Footer 状态点：按刷新时间颜色编码（< 1min 绿 / 1-5min 黄脉冲 / > 5min 红脉冲）
+- 主面板 QuotaCard 预估爆仓时间：(100 - usageRate) / burnRatePerHour，< 2h 红闪烁 / < 8h 黄
+- 主面板 Insights 洞察模块：周对比 + 主力模型 + 高峰时段（数据确定算法，不调 LLM）
+- 7 个新 IPC：test-provider-connection / export-config / import-config / confirm-import-config / get-config-path / reload-config / open-config-folder
+- 单元测试脚本：verify-pricing.mjs（14 用例）+ verify-insights.mjs（11 用例）
+
+### Fixed
+- 修复分模型费用明细与总费用不一致的 bug：之前 STATIC_MODEL_RATES 不含运行时模型，改用 buildRuntimeModelRates 走同 getPricing() 兜底，保证"总额 = 明细加总"
+- 修复 GLM-5.2 估值可能与实际官方价偏差：note 里说明"按 × 1.25 暂估"，等官方定价出来后校准
+
+### Changed
+- 智谱 Provider 暴露 periodHours 到 QuotaItem（从 ZhipuLimitItem.unit/number 计算）
+- package.json 添加 devDependencies 字段（electron / electron-vite / electron-builder / vite / typescript / @types/node / @vitejs/plugin-vue / tsx）+ scripts（dev/build/start/typecheck/pack/dist/verify:*）
+- 颜色滑块用 `change` 而非 `input` 事件节流，避免拖动时高频触发自动保存
+- 阈值滑块加 ARIA 属性（role="slider" + aria-valuenow），状态点/状态徽标加 aria-label，icon-btn 加 tabindex
+- 全局 window.onerror 监听 → 主进程写 log 文件，诊断页加"查看日志"按钮
+- .gitignore 加 release-v*/ 模式防误 commit 380MB 包体
+
 ## [1.5.0] - 2026-07-24
 ### Added
 - 新增 Codex（ChatGPT）用量监控：主/次窗口限流、代码审查额度、Credits 余额、订阅到期

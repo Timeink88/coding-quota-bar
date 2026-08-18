@@ -233,7 +233,7 @@ const STATIC_MODEL_RATES: Record<string, number> = (() => {
  * 这里把分模型明细也用同样的兜底策略，保证「总费用 = 明细相加」。
  */
 function buildRuntimeModelRates(
-  modelDataLists: Array<ZhipuModelUsageResponse['data']['modelDataList'] | undefined>
+  modelDataLists: Array<NonNullable<ZhipuModelUsageResponse['data']>['modelDataList'] | undefined>
 ): Record<string, number> {
   const rates: Record<string, number> = { ...STATIC_MODEL_RATES };
   for (const list of modelDataLists) {

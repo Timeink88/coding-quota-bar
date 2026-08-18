@@ -187,7 +187,9 @@
     "firstRunSkip": "Skip",
     "nextStep": "Next",
     "prevStep": "Back",
-    "finish": "Finish"
+    "finish": "Finish",
+    "viewLog": "View log",
+    "recentLogLines": "Last {n} log lines"
   },
   "provider": {
     "expired": "Expired",

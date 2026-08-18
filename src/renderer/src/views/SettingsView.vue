@@ -49,6 +49,8 @@
               class="provider-status-badge"
               :class="`status-${getProviderStatus(info).key}`"
               :title="$t(`settings.providerStatus${getProviderStatus(info).key.charAt(0).toUpperCase() + getProviderStatus(info).key.slice(1)}`)"
+              :aria-label="$t(`settings.providerStatus${getProviderStatus(info).key.charAt(0).toUpperCase() + getProviderStatus(info).key.slice(1)}`)"
+              role="status"
             >
               <span class="status-dot-inline"></span>
               {{ $t(`settings.providerStatus${getProviderStatus(info).key.charAt(0).toUpperCase() + getProviderStatus(info).key.slice(1)}`) }}
@@ -256,15 +258,27 @@
               </div>
               <input
                 type="range" min="0" max="100" step="1"
-                v-model.number="greenThreshold"
+                v-model.lazy.number="greenThreshold"
                 class="threshold-handle threshold-handle-green"
                 :title="`绿/黄分界 ${greenThreshold}%`"
+                role="slider"
+                :aria-valuemin="0"
+                :aria-valuemax="100"
+                :aria-valuenow="greenThreshold"
+                :aria-label="`绿/黄分界阈值 ${greenThreshold}%`"
+                @change="scheduleSave"
               />
               <input
                 type="range" min="0" max="100" step="1"
-                v-model.number="yellowThreshold"
+                v-model.lazy.number="yellowThreshold"
                 class="threshold-handle threshold-handle-yellow"
                 :title="`黄/红分界 ${yellowThreshold}%`"
+                role="slider"
+                :aria-valuemin="0"
+                :aria-valuemax="100"
+                :aria-valuenow="yellowThreshold"
+                :aria-label="`黄/红分界阈值 ${yellowThreshold}%`"
+                @change="scheduleSave"
               />
             </div>
             <div class="threshold-labels">
@@ -317,64 +331,30 @@
         </div>
 
         <!-- Tier 2: 导入/导出配置 -->
-        <div class="form-group">
-          <label class="form-label">{{ $t('settings.importExport') }}</label>
-          <div class="import-export-row">
-            <button class="io-btn" @click="exportConfig(false)">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-              </svg>
-              <span>{{ $t('settings.exportBtn') }}</span>
-            </button>
-            <select v-model="exportMode" class="io-mode-select">
-              <option value="sanitized">{{ $t('settings.exportSanitized') }}</option>
-              <option value="full">{{ $t('settings.exportFull') }}</option>
-            </select>
-            <button class="io-btn" @click="importConfig">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
-              </svg>
-              <span>{{ $t('settings.importBtn') }}</span>
-            </button>
-          </div>
-          <div v-if="importConfirmPending" class="import-confirm">
-            <div class="import-confirm-text">
-              <strong>{{ $t('settings.importConfirmTitle') }}</strong>
-              <p>{{ importConfirmPending.isSanitized ? $t('settings.importIsSanitized') : $t('settings.importIsFull') }}</p>
-              <p class="import-confirm-body">{{ $t('settings.importConfirmBody') }}</p>
-            </div>
-            <div class="import-confirm-actions">
-              <button class="io-btn-secondary" @click="cancelImport">{{ $t('settings.discardChanges') }}</button>
-              <button class="io-btn-primary" @click="confirmImport">{{ $t('settings.saveNow') }}</button>
-            </div>
-          </div>
-          <div v-if="importExportStatus" class="import-export-status" :class="{ error: importExportError }">
-            {{ importExportStatus }}
-          </div>
-        </div>
+        <ImportExportSection
+          :export-mode="exportMode"
+          :status="importExportStatus"
+          :error="importExportError"
+          :confirm-pending="importConfirmPending"
+          @update:export-mode="exportMode = $event"
+          @export="exportConfig"
+          @import="importConfig"
+          @cancel-import="cancelImport"
+          @confirm-import="confirmImport"
+        />
 
         <!-- Tier 3: 诊断面板 -->
-        <div class="form-group">
-          <label class="form-label">{{ $t('settings.diagnostics') }}</label>
-          <div class="diag-row">
-            <span class="diag-label">{{ $t('settings.configPath') }}</span>
-            <code class="diag-path" :title="configPath">{{ configPath || '...' }}</code>
-            <button class="diag-btn" @click="openConfigFolder">{{ $t('settings.openConfigFolder') }}</button>
-          </div>
-          <div class="diag-row">
-            <button class="diag-btn" @click="reloadConfig" :disabled="reloadingConfig">
-              {{ reloadingConfig ? '...' : $t('settings.reloadConfig') }}
-            </button>
-            <button class="diag-btn" @click="pingAll" :disabled="pingingAll">
-              {{ pingingAll ? '...' : $t('settings.testAllProviders') }}
-            </button>
-            <span v-if="pingResult" class="diag-ping-result" :class="pingResult.failed === 0 ? 'ok' : 'partial'">
-              {{ pingResult.failed === 0
-                  ? $t('settings.pingAllSuccess')
-                  : $t('settings.pingAllSomeFailed', { n: pingResult.ok, total: pingResult.total }) }}
-            </span>
-          </div>
-        </div>
+        <DiagnosticsSection
+          :config-path="configPath"
+          :reloading="reloadingConfig"
+          :pinging="pingingAll"
+          :ping-result="pingResult"
+          :log-tail="logTail"
+          @open-folder="openConfigFolder"
+          @reload="reloadConfig"
+          @ping-all="pingAll"
+          @view-log="loadRendererLog"
+        />
         <div class="form-group">
           <label class="form-label">{{ $t('settings.language') }}</label>
           <select v-model="language" class="form-select">
@@ -461,6 +441,8 @@ import { ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { AppConfig, ProviderTypeConfig, AccountConfig, UpdateStatus } from '../types'
 import { useTheme } from '../composables/useTheme'
+import ImportExportSection from '../components/settings/ImportExportSection.vue'
+import DiagnosticsSection from '../components/settings/DiagnosticsSection.vue'
 
 defineEmits<{ 'go-back': [] }>()
 const props = defineProps<{ autoCheckUpdate?: boolean }>()
@@ -694,10 +676,10 @@ onMounted(async () => {
       maskedApiKey: account.apiKey ?? '',
       apiKey: '',
       showKey: false,
-      budget: (account as any).budget ?? undefined,
+      budget: account.budget ?? undefined,
       authMode: (key === 'mimo' || key === 'codex') ? (account.authMode ?? 'weblogin') : (account.authMode ?? 'apikey'),
       webTokenStatus: key === 'mimo'
-        ? ((account as any).mimoLoggedIn ? 'active' : 'none')
+        ? ((account as { mimoLoggedIn?: boolean }).mimoLoggedIn ? 'active' : 'none')
         : key === 'codex'
           ? 'none'
           : (account.hasWebToken ? 'active' : 'none'),
@@ -727,7 +709,7 @@ onMounted(async () => {
   })
   refreshInterval.value = String(config.refreshInterval)
   autoStart.value = config.autoStart
-  isPackaged.value = (config as any).isPackaged ?? true
+  isPackaged.value = (config as { isPackaged?: boolean }).isPackaged ?? true
   language.value = config.language || locale.value
   popupTrigger.value = config.popupTrigger ?? 'hover'
   memorySavingMode.value = config.memorySavingMode ?? false
@@ -921,6 +903,11 @@ function handleUpdateClick() {
 async function testConnection(info: ProviderInfo, account: AccountInfo) {
   const key = `${info.key}:${account.id}`
   testStates.value[key] = { status: 'testing' }
+  // 客户端保险：IPC 自身卡死时也能 bail（12s > 后端 8s，留 4s 余量）
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutHandle = setTimeout(() => reject(new Error('客户端超时（12s）')), 12000)
+  })
   try {
     const params: Parameters<typeof window.electronAPI.testProviderConnection>[0] = {
       providerKey: info.key,
@@ -931,7 +918,10 @@ async function testConnection(info: ProviderInfo, account: AccountInfo) {
     if (account.apiKeyDirty && account.apiKey) {
       params.apiKey = account.apiKey
     }
-    const result = await window.electronAPI.testProviderConnection(params)
+    const result = await Promise.race([
+      window.electronAPI.testProviderConnection(params),
+      timeoutPromise,
+    ])
     if (result.ok) {
       testStates.value[key] = {
         status: 'success',
@@ -943,6 +933,8 @@ async function testConnection(info: ProviderInfo, account: AccountInfo) {
     }
   } catch (e) {
     testStates.value[key] = { status: 'failed', error: e instanceof Error ? e.message : String(e) }
+  } finally {
+    if (timeoutHandle) clearTimeout(timeoutHandle)
   }
   // 5 秒后自动清除成功状态
   if (testStates.value[key].status === 'success') {
@@ -1064,6 +1056,7 @@ const configPath = ref('')
 const reloadingConfig = ref(false)
 const pingingAll = ref(false)
 const pingResult = ref<{ ok: number; failed: number; total: number } | null>(null)
+const logTail = ref<string[]>([])
 
 async function loadConfigPath() {
   configPath.value = await window.electronAPI.getConfigPath()
@@ -1072,6 +1065,14 @@ onMounted(() => { loadConfigPath() })
 
 async function openConfigFolder() {
   await window.electronAPI.openConfigFolder()
+}
+
+async function loadRendererLog() {
+  // 优先用 openRendererLog（系统默认编辑器打开，跨平台更友好）
+  await window.electronAPI.openRendererLog()
+  // 同时拉最近 200 行内嵌显示
+  const result = await window.electronAPI.getRendererLog()
+  logTail.value = result.tail
 }
 
 async function reloadConfig() {

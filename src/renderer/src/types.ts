@@ -244,6 +244,24 @@ export interface ElectronAPI {
   deepseekWebLogout: (accountId: string) => Promise<void>
   onDeepseekWebLoginSuccess: (callback: (accountId: string) => void) => void
   deepseekFetchMonthUsage: (accountId: string, year: number, month: number) => Promise<{ tokens: ModelTokenRecord[]; costs: ModelCostRecord[] }>
+  // 诊断 / 日志
+  testProviderConnection: (params: {
+    providerKey: string
+    accountId?: string
+    apiKey?: string
+    authMode?: 'apikey' | 'weblogin'
+    webToken?: string
+    webUserAgent?: string
+  }) => Promise<{ ok: boolean; error?: string; latencyMs: number; sample?: { used: number; total: number; level: string } }>
+  exportConfig: (options?: { sanitize?: boolean }) => Promise<{ ok: boolean; path?: string; error?: string }>
+  importConfig: () => Promise<{ ok: boolean; canceled?: boolean; config?: unknown; error?: string; isSanitized?: boolean }>
+  confirmImportConfig: (data: unknown) => Promise<{ ok: boolean; error?: string }>
+  getConfigPath: () => Promise<string>
+  reloadConfig: () => Promise<{ ok: boolean; error?: string }>
+  openConfigFolder: () => Promise<{ ok: boolean; error?: string }>
+  reportRendererError: (payload: { message: string; stack?: string; source?: string }) => void
+  getRendererLog: () => Promise<{ path: string; tail: string[] }>
+  openRendererLog: () => Promise<{ ok: boolean; error?: string }>
 }
 
 declare global {

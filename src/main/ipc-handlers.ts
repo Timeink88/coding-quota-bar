@@ -1,5 +1,6 @@
 import { ipcMain, app, shell, dialog } from 'electron';
-import { writeFile, readFile } from 'node:fs/promises';
+import { writeFile, readFile, appendFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { autoUpdater } from 'electron-updater';
 import type { ConfigManager } from './config';
 import type { Scheduler } from './scheduler';
@@ -15,6 +16,7 @@ import { OpenCodeGoProvider } from '../providers/opencode-go';
 import { getAvailableProviderKeys } from './loader';
 import { buildUsageData } from './data-transform';
 import { isSafeExternalUrl } from './utils/security';
+import buildConfig from '../../app.build';
 import type { Provider, ProviderConfig } from '../shared/types';
 
 /**
@@ -279,7 +281,7 @@ export function setupIpcHandlers(): void {
       return { ok: false, error: `Unknown provider: ${params.providerKey}`, latencyMs: 0 };
     }
 
-    const buildEntry = (await import('./loader')).default.providers.find((p: any) => p.key === params.providerKey);
+    const buildEntry = buildConfig.providers.find((p: typeof buildConfig.providers[number]) => p.key === params.providerKey);
 
     // 解析最终使用的 key / token
     let apiKey = params.apiKey || '';
@@ -308,7 +310,16 @@ export function setupIpcHandlers(): void {
 
     try {
       const instance = new ProviderClass();
-      const result = await instance.fetchUsage(config);
+      // 8s 超时：网络卡死时不让按钮永远转圈
+      let timeoutHandle: NodeJS.Timeout | undefined
+      const result = await Promise.race([
+        instance.fetchUsage(config),
+        new Promise<never>((_, reject) => {
+          timeoutHandle = setTimeout(() => reject(new Error('连接超时（8s）')), 8000)
+        }),
+      ]).finally(() => {
+        if (timeoutHandle) clearTimeout(timeoutHandle)
+      })
       return {
         ok: true,
         latencyMs: Date.now() - start,
@@ -467,6 +478,41 @@ export function setupIpcHandlers(): void {
       // 用 shell 打开所在目录
       const { shell } = await import('electron')
       await shell.showItemInFolder(configPath)
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) }
+    }
+  })
+
+  /**
+   * === Tier 3: 错误日志 ===
+   * 渲染层上报 error/unhandledrejection → 主进程追加到 log 文件
+   * 诊断页 "查看日志" 按钮读取最近 200 行
+   * log 文件: <userData>/renderer-errors.log
+   */
+  const RENDERER_LOG = join(app.getPath('userData'), 'renderer-errors.log')
+
+  ipcMain.on('renderer-error', (_, payload: { message: string; stack?: string; source?: string }) => {
+    const line = JSON.stringify({
+      ts: new Date().toISOString(),
+      ...payload,
+    }) + '\n'
+    appendFile(RENDERER_LOG, line, 'utf8').catch(e => console.error('[Log] failed:', e))
+  })
+
+  ipcMain.handle('get-renderer-log', async (): Promise<{ path: string; tail: string[] }> => {
+    try {
+      const content = await readFile(RENDERER_LOG, 'utf8')
+      const lines = content.split('\n').filter(Boolean)
+      return { path: RENDERER_LOG, tail: lines.slice(-200) }
+    } catch {
+      return { path: RENDERER_LOG, tail: [] }
+    }
+  })
+
+  ipcMain.handle('open-renderer-log', async (): Promise<{ ok: boolean; error?: string }> => {
+    try {
+      await shell.openPath(RENDERER_LOG)
       return { ok: true }
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) }

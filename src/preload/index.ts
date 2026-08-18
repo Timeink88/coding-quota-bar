@@ -138,6 +138,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openConfigFolder: () => ipcRenderer.invoke('open-config-folder'),
 
   /**
+   * === 错误日志（Tier 3 polish）===
+   */
+  reportRendererError: (payload: { message: string; stack?: string; source?: string }) => {
+    ipcRenderer.send('renderer-error', payload)
+  },
+  getRendererLog: () => ipcRenderer.invoke('get-renderer-log'),
+  openRendererLog: () => ipcRenderer.invoke('open-renderer-log'),
+
+  /**
    * 监听来自托盘菜单的检查更新触发事件
    */
   onTriggerCheckUpdate: (callback: () => void) => {

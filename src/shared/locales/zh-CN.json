@@ -187,7 +187,9 @@
     "firstRunSkip": "跳过",
     "nextStep": "下一步",
     "prevStep": "上一步",
-    "finish": "完成"
+    "finish": "完成",
+    "viewLog": "查看日志",
+    "recentLogLines": "最近 {n} 条日志"
   },
   "provider": {
     "expired": "已过期",
