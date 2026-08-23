@@ -15,7 +15,6 @@
 - 主面板 QuotaCard 预估爆仓时间：(100 - usageRate) / burnRatePerHour，< 2h 红闪烁 / < 8h 黄
 - 主面板 Insights 洞察模块：周对比 + 主力模型 + 高峰时段（数据确定算法，不调 LLM）
 - 7 个新 IPC：test-provider-connection / export-config / import-config / confirm-import-config / get-config-path / reload-config / open-config-folder
-- 单元测试脚本：verify-pricing.mjs（14 用例）+ verify-insights.mjs（11 用例）
 
 ### Fixed
 - 修复分模型费用明细与总费用不一致的 bug：之前 STATIC_MODEL_RATES 不含运行时模型，改用 buildRuntimeModelRates 走同 getPricing() 兜底，保证"总额 = 明细加总"

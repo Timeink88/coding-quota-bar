@@ -1,7 +1,6 @@
 import type { Provider, ProviderConfig, ProviderTypeConfig } from '../shared/types';
 import { ZhipuProvider } from '../providers/zhipu';
 import { MiniMaxProvider } from '../providers/minimax';
-import { KimiProvider } from '../providers/kimi';
 import { DeepSeekProvider } from '../providers/deepseek';
 import { MiMoProvider } from '../providers/mimo';
 import { CodexProvider } from '../providers/codex';
@@ -14,7 +13,6 @@ import buildConfig from '../../app.build';
 const PROVIDER_CLASSES = {
   zhipu: ZhipuProvider,
   minimax: MiniMaxProvider,
-  kimi: KimiProvider,
   deepseek: DeepSeekProvider,
   mimo: MiMoProvider,
   codex: CodexProvider,

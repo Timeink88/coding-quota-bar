@@ -262,17 +262,6 @@ export function generateMockData(): Record<string, UsageResult> {
       },
     },
 
-    kimi: {
-      used: 120000,
-      total: 150000,
-      expiresAt: new Date(now + 7 * DAY).toISOString(),
-      details: {
-        quotas: [
-          { label: '配额', used: 120000, total: 150000, usageRate: 80, resetAt: new Date(now + 7 * DAY).toISOString() }
-        ]
-      }
-    },
-
     codex: {
       used: 65,
       total: 100,

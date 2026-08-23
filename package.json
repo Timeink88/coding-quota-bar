@@ -13,9 +13,7 @@
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json",
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
     "pack": "electron-builder --win --dir",
-    "dist": "electron-builder --win",
-    "verify:pricing": "node scripts/verify-pricing.mjs",
-    "verify:insights": "node scripts/verify-insights.mjs"
+    "dist": "electron-builder --win"
   },
   "dependencies": {
     "chart.js": "^4.5.1",

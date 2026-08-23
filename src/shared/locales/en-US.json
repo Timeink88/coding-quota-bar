@@ -263,7 +263,6 @@
   "providers": {
     "zhipu": "Z AI",
     "minimax": "MiniMax",
-    "kimi": "Kimi",
     "deepseek": "DeepSeek",
     "mimo": "MiMo",
     "codex": "Codex",

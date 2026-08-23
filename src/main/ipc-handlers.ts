@@ -10,7 +10,6 @@ import { DeepSeekProvider } from '../providers/deepseek';
 import { MiMoProvider } from '../providers/mimo';
 import { ZhipuProvider } from '../providers/zhipu';
 import { MiniMaxProvider } from '../providers/minimax';
-import { KimiProvider } from '../providers/kimi';
 import { CodexProvider } from '../providers/codex';
 import { OpenCodeGoProvider } from '../providers/opencode-go';
 import { getAvailableProviderKeys } from './loader';
@@ -25,7 +24,6 @@ import type { Provider, ProviderConfig } from '../shared/types';
 const PROVIDER_CLASSES: Record<string, new () => Provider> = {
   zhipu: ZhipuProvider,
   minimax: MiniMaxProvider,
-  kimi: KimiProvider,
   deepseek: DeepSeekProvider,
   mimo: MiMoProvider,
   codex: CodexProvider,
