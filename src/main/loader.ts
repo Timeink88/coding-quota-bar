@@ -79,9 +79,9 @@ export class ProviderLoader {
           continue;
         }
 
-        // 按认证模式检查必要凭证
+        // 按认证模式检查必要凭证（OpenCode Go 走官方 API，无论旧账户是什么模式都需要 API Key）
         const authMode = account.authMode || 'apikey';
-        if (authMode === 'apikey' && !account.apiKey?.trim()) {
+        if ((authMode === 'apikey' || type === 'opencode-go') && !account.apiKey?.trim()) {
           continue;
         }
         // MiMo 使用 Cookie 认证，Codex 读取本地 auth 文件，均不需要 webToken
