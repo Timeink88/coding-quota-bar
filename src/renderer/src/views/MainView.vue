@@ -193,7 +193,6 @@ import DeepSeekServiceStatus from '../components/DeepSeekServiceStatus.vue'
 import MiMoSection from '../components/MiMoSection.vue'
 import OpenCodeGoSection from '../components/OpenCodeGoSection.vue'
 import CodexSection from '../components/CodexSection.vue'
-import OpenCodeGoSection from '../components/OpenCodeGoSection.vue'
 import type { ProviderUsageData, AccountUsageData, UsageState, WindowPinMode } from '../types'
 import { useTheme } from '../composables/useTheme'
 
@@ -847,6 +846,8 @@ onUnmounted(() => {
 @keyframes dot-pulse {
   0%, 100% { box-shadow: 0 0 0 0 currentColor; }
   50%      { box-shadow: 0 0 0 4px transparent; }
+}
+
 /* 固定且不置顶（桌面模式）：以次级文字色区分于置顶固定 */
 .pin-btn.desktop {
   color: var(--text-secondary);
