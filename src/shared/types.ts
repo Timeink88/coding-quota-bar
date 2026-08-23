@@ -173,6 +173,11 @@ export interface TrayColors {
   gray: string;
 }
 
+/**
+ * 窗口固定状态（header 固定按钮三态）
+ */
+export type WindowPinMode = 'unpinned' | 'pinned-top' | 'pinned-desktop';
+
 export interface AppConfig {
   refreshInterval: number;
   providers: Record<string, ProviderTypeConfig>;
@@ -194,6 +199,7 @@ export interface AppConfig {
   autoCheckUpdateInterval?: number;
   lastAutoCheckTime?: string | null;
   popupPosition?: { x: number; y: number };
+  popupSize?: { width: number; height: number };
   rememberPopupPosition?: boolean;
 }
 

@@ -34,6 +34,7 @@ electron-builder.yml
 
 .claude/
 CLAUDE.md
+AGENTS.md
 .playwright-cli/
 
 tts/

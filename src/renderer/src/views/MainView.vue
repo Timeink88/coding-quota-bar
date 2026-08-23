@@ -5,15 +5,18 @@
       <div class="header-actions">
         <button
           class="icon-btn pin-btn"
-          :class="{ active: isPinned }"
-          :title="isPinned ? $t('main.unpinWindow') : $t('main.pinWindow')"
+          :class="{ active: pinMode !== 'unpinned', desktop: pinMode === 'pinned-desktop' }"
+          :title="$t('main.pinWindow')"
           @click="togglePin"
         >
-          <svg v-if="!isPinned" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg v-if="pinMode === 'unpinned'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.89A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.89A2 2 0 0 0 5 15.24Z"/>
+          </svg>
+          <svg v-else-if="pinMode === 'pinned-top'" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
             <line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.89A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.89A2 2 0 0 0 5 15.24Z"/>
           </svg>
           <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.89A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.89A2 2 0 0 0 5 15.24Z"/>
+            <line x1="12" y1="17" x2="12" y2="20"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.89A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.89A2 2 0 0 0 5 15.24Z"/><line x1="6" y1="21" x2="18" y2="21" stroke-width="2"/>
           </svg>
         </button>
         <button class="icon-btn" :title="$t('main.toggleTheme')" @click="toggleTheme">
@@ -109,6 +112,7 @@
               </button>
             </div>
             <div class="provider-name-actions">
+              <span v-if="isPlanExpired(activeProvider)" class="provider-level-expired">{{ $t('main.expired') }}</span>
               <FloatingTooltip v-if="getActiveAccount(activeProvider)?.level" position="bottom" align="right" :rows="getSubRows(getActiveAccount(activeProvider)!.subscription)">
                 <span class="provider-level">{{ getActiveAccount(activeProvider)!.level }}</span>
               </FloatingTooltip>
@@ -132,7 +136,7 @@
                 <template v-if="getActiveAccount(activeProvider)!.error === 'TOKEN_EXPIRED'">
                   <template v-if="activeProvider.key === 'codex'">{{ $t('main.codexTokenExpired') }}</template>
                   <template v-else>
-                    {{ activeProvider.key === 'mimo' ? $t('main.mimoTokenExpired') : $t('main.deepseekTokenExpired') }}
+                    {{ activeProvider.key === 'mimo' ? $t('main.mimoTokenExpired') : activeProvider.key === 'opencode-go' ? $t('main.opencodegoTokenExpired') : $t('main.deepseekTokenExpired') }}
                     <button class="relogin-btn" @click="$emit('open-settings')">{{ $t('main.reloginBtn') }}</button>
                   </template>
                 </template>
@@ -187,9 +191,10 @@ import MiniMaxSection from '../components/MiniMaxSection.vue'
 import DeepSeekSection from '../components/DeepSeekSection.vue'
 import DeepSeekServiceStatus from '../components/DeepSeekServiceStatus.vue'
 import MiMoSection from '../components/MiMoSection.vue'
+import OpenCodeGoSection from '../components/OpenCodeGoSection.vue'
 import CodexSection from '../components/CodexSection.vue'
 import OpenCodeGoSection from '../components/OpenCodeGoSection.vue'
-import type { ProviderUsageData, AccountUsageData, UsageState } from '../types'
+import type { ProviderUsageData, AccountUsageData, UsageState, WindowPinMode } from '../types'
 import { useTheme } from '../composables/useTheme'
 
 const emit = defineEmits<{ 'open-settings': [options?: { checkUpdate?: boolean }]; 'open-concurrency-test': [] }>()
@@ -203,7 +208,7 @@ const loading = ref(false)
 const initialLoading = ref(true)
 const updateNotification = ref<{ version: string } | null>(null)
 const now = ref(Date.now())
-const isPinned = ref(false)
+const pinMode = ref<WindowPinMode>('unpinned')
 const showTabs = ref(false)
 let hideTimer: ReturnType<typeof setTimeout> | null = null
 let offUpdateStatus: (() => void) | null = null
@@ -266,6 +271,10 @@ function getActiveAccountId(p: ProviderUsageData): string {
 function getActiveAccount(p: ProviderUsageData): AccountUsageData | undefined {
   const id = getActiveAccountId(p)
   return p.accounts.find(a => a.id === id) || p.accounts[0]
+}
+
+function isPlanExpired(p: ProviderUsageData): boolean {
+  return getActiveAccount(p)?.subscription?.status === 'EXPIRED'
 }
 
 function setActiveAccount(p: ProviderUsageData, accountId: string): void {
@@ -339,8 +348,12 @@ function openProviderWebsite(url?: string) {
 }
 
 function togglePin() {
-  isPinned.value = !isPinned.value
-  window.electronAPI.setWindowPinned(isPinned.value)
+  const next: WindowPinMode =
+    pinMode.value === 'unpinned' ? 'pinned-top'
+    : pinMode.value === 'pinned-top' ? 'pinned-desktop'
+    : 'unpinned'
+  pinMode.value = next
+  window.electronAPI.setWindowPinned(next)
 }
 
 function getSubRows(sub: AccountUsageData['subscription']) {
@@ -380,9 +393,9 @@ onMounted(async () => {
   window.electronAPI.onUsageDataUpdated((data) => {
     if (data) applyState(data)
   })
-  // 监听窗口锁定状态
-  window.electronAPI.onWindowPinnedState((pinned) => {
-    isPinned.value = pinned
+  // 监听窗口固定状态
+  window.electronAPI.onWindowPinnedState((mode) => {
+    pinMode.value = mode
   })
   // 监听主进程推送的更新状态
   offUpdateStatus = window.electronAPI.onUpdateStatusChanged((status) => {
@@ -626,6 +639,19 @@ onUnmounted(() => {
   cursor: default;
 }
 
+.provider-level-expired {
+  font-size: 10px;
+  font-weight: 600;
+  color: #fff;
+  background: #dc2626;
+  padding: 2px 6px;
+  border-radius: 8px;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  line-height: 1;
+  cursor: default;
+}
+
 .provider-name-row > .ft-wrapper {
   margin-left: auto;
   flex-shrink: 0;
@@ -821,5 +847,8 @@ onUnmounted(() => {
 @keyframes dot-pulse {
   0%, 100% { box-shadow: 0 0 0 0 currentColor; }
   50%      { box-shadow: 0 0 0 4px transparent; }
+/* 固定且不置顶（桌面模式）：以次级文字色区分于置顶固定 */
+.pin-btn.desktop {
+  color: var(--text-secondary);
 }
 </style>

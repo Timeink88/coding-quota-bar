@@ -19,40 +19,10 @@
   </div>
 
   <!-- 本月用量（主指标） -->
-  <div class="credits-card" v-if="monthlyQuota">
-    <div class="credits-top">
-      <span class="credits-label">{{ $t(monthlyQuota.label) }}</span>
-      <span class="credits-percent" :class="monthlyQuota.color">{{ Math.round(monthlyQuota.usageRate) }}%</span>
-    </div>
-    <div class="credits-bar">
-      <div class="credits-fill" :class="monthlyQuota.color" :style="{ width: monthlyQuota.usageRate + '%' }"></div>
-    </div>
-    <div class="credits-bottom">
-      <span class="credits-values">{{ formatCredits(monthlyQuota.used) }} / {{ formatCredits(monthlyQuota.total) }} Credits</span>
-      <span class="credits-reset">{{ formatReset(monthlyQuota.resetAt) }}</span>
-    </div>
-    <div class="credits-detail">
-      <div class="detail-header" :title="estimateTooltip">{{ t('quota.mimoEstimateTitle') }}</div>
-      <div class="detail-model" v-for="m in modelEstimates" :key="m.name">
-        <div class="detail-row">
-          <span class="detail-label">{{ m.name }}</span>
-          <span class="detail-value">{{ formatTokens(m.used) }} / {{ formatTokens(m.total) }}</span>
-        </div>
-        <div class="detail-bar"><div class="detail-bar-fill" :class="monthlyQuota?.color" :style="{ width: monthlyQuota?.usageRate + '%' }"></div></div>
-      </div>
-    </div>
-  </div>
+  <MiMoQuotaCard v-if="monthlyQuota" v-bind="monthlyQuota" />
 
   <!-- 补偿额度（如果有） -->
-  <div class="quota-row-single" v-for="q in compensationQuotas" :key="q.label">
-    <QuotaCard
-      :label="q.label"
-      :labelParams="q.labelParams"
-      :usageRate="q.usageRate"
-      :resetAt="q.resetAt"
-      :color="q.color"
-    />
-  </div>
+  <MiMoQuotaCard v-for="q in compensationQuotas" :key="q.label" v-bind="q" />
 
   <!-- 每月用量 -->
   <div class="usage-stats">
@@ -103,6 +73,7 @@ import {
   Tooltip,
 } from 'chart.js'
 import QuotaCard from './QuotaCard.vue'
+import MiMoQuotaCard from './MiMoQuotaCard.vue'
 import type { AccountUsageData, ModelTokenRecord } from '../types'
 import { useTheme } from '../composables/useTheme'
 
@@ -116,37 +87,6 @@ const props = defineProps<{ account: AccountUsageData }>()
 const monthlyQuota = computed(() =>
   props.account.quotas.find(q => q.label === 'quota.mimoMonthlyUsage')
 )
-
-// 模型定价（Credits/1M tokens），来源：src/providers/mimo-pricing.json
-const MIMO_PRICING: Record<string, { cacheHit: number; cacheMiss: number; output: number }> = {
-  'mimo-v2.5-pro': { cacheHit: 2.5, cacheMiss: 300, output: 600 },
-  'mimo-v2.5':     { cacheHit: 2,   cacheMiss: 100, output: 200 },
-}
-
-const TOKEN_RATIO = { cache: 0.95, miss: 0.04, output: 0.01 }
-
-// 估算各模型可用 token 数（已用/总量）
-const modelEstimates = computed(() => {
-  const q = monthlyQuota.value
-  if (!q) return []
-  return Object.entries(MIMO_PRICING).map(([name, p]) => {
-    const weightedPrice = TOKEN_RATIO.cache * p.cacheHit + TOKEN_RATIO.miss * p.cacheMiss + TOKEN_RATIO.output * p.output
-    const total = weightedPrice > 0 ? q.total / weightedPrice : 0
-    const used = weightedPrice > 0 ? q.used / weightedPrice : 0
-    return { name, total, used, remaining: total - used }
-  })
-})
-
-function formatTokens(n: number): string {
-  if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}B`
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`
-  return `${Math.round(n)}`
-}
-
-const estimateTooltip = computed(() => {
-  return t('quota.mimoEstimateFormula', { cache: '95%', miss: '4%', output: '1%' })
-})
 
 const compensationQuotas = computed(() =>
   props.account.quotas.filter(q => q.label === 'quota.mimoCompensation')
@@ -391,7 +331,7 @@ const tokenChartOpts = computed(() => ({
     },
     y: {
       stacked: true,
-      ticks: { color: isDark.value ? '#666' : '#999', font: { size: 8 }, callback: (v: number) => formatCount(v), maxTicksLimit: 4 },
+      ticks: { color: isDark.value ? '#666' : '#999', font: { size: 8 }, callback: (v: string | number) => formatCount(Number(v)), maxTicksLimit: 4 },
       grid: { color: isDark.value ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)' },
       border: { display: false },
     },
@@ -498,137 +438,6 @@ const requestsChartOpts = computed(() => ({
   color: var(--text-tertiary);
 }
 
-.credits-card {
-  padding: 8px 10px;
-  background: var(--bg-card);
-  border-radius: 8px;
-  box-shadow: var(--shadow-card);
-  transition: background 0.2s, box-shadow 0.2s;
-  overflow: hidden;
-}
-
-.credits-card:hover {
-  background: var(--bg-card-hover);
-  box-shadow: var(--shadow-card-hover);
-}
-
-.credits-detail {
-  max-height: 0;
-  opacity: 0;
-  overflow: hidden;
-  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease, margin-top 0.3s ease;
-  margin-top: 0;
-}
-
-.credits-card:hover .credits-detail {
-  max-height: 140px;
-  opacity: 1;
-  margin-top: 8px;
-}
-
-.detail-header {
-  font-size: 11px;
-  color: var(--text-secondary);
-  margin-bottom: 4px;
-  cursor: help;
-  border-bottom: 1px dashed var(--border-subtle);
-  display: inline-block;
-}
-
-.detail-model {
-  margin-bottom: 4px;
-}
-
-.detail-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1px 0;
-}
-
-.detail-label {
-  font-size: 11px;
-  color: var(--text-tertiary);
-}
-
-.detail-value {
-  font-size: 11px;
-  color: var(--text-secondary);
-  font-variant-numeric: tabular-nums;
-}
-
-.detail-bar {
-  height: 3px;
-  background: var(--border-subtle);
-  border-radius: 1.5px;
-  overflow: hidden;
-}
-
-.detail-bar-fill {
-  height: 100%;
-  border-radius: 1.5px;
-  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-  .detail-bar-fill.green { background: linear-gradient(90deg, var(--cqb-green-light), var(--cqb-green)); }
-  .detail-bar-fill.yellow { background: linear-gradient(90deg, var(--cqb-yellow-light), var(--cqb-yellow)); }
-  .detail-bar-fill.red { background: linear-gradient(90deg, var(--cqb-red-light), var(--cqb-red)); }
-
-.credits-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: 5px;
-}
-
-.credits-label {
-  font-weight: 600;
-  font-size: 13px;
-  color: var(--text-heading);
-}
-
-.credits-percent {
-  font-weight: 700;
-  font-size: 16px;
-  font-variant-numeric: tabular-nums;
-  color: var(--text-primary);
-}
-.credits-percent.yellow { color: #a16207; }
-  .credits-percent.red { color: var(--cqb-red-dark); }
-
-.credits-bar {
-  height: 6px;
-  background: var(--border-subtle);
-  border-radius: 3px;
-  overflow: hidden;
-  margin-bottom: 5px;
-}
-
-.credits-fill {
-  height: 100%;
-  border-radius: 3px;
-  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-}
-  .credits-fill.green { background: linear-gradient(90deg, var(--cqb-green-light), var(--cqb-green)); }
-  .credits-fill.yellow { background: linear-gradient(90deg, var(--cqb-yellow-light), var(--cqb-yellow)); }
-  .credits-fill.red { background: linear-gradient(90deg, var(--cqb-red-light), var(--cqb-red)); }
-
-.credits-bottom {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.credits-values {
-  font-size: 11px;
-  color: var(--text-secondary);
-  font-variant-numeric: tabular-nums;
-}
-
-.credits-reset {
-  font-size: 10px;
-  color: var(--text-tertiary);
-}
 
 .usage-stats {
   margin-top: 8px;

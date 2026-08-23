@@ -18,7 +18,7 @@ const props = withDefaults(defineProps<{
       :class="[`ft-${props.position}`, `ft-${props.align}`]"
     >
       <div v-for="(row, i) in rows" :key="i" class="ft-row">
-        <span class="ft-label">{{ row.label }}</span>
+        <span class="ft-label" :title="row.label">{{ row.label }}</span>
         <span class="ft-value">{{ row.value }}</span>
       </div>
     </div>
@@ -44,6 +44,7 @@ const props = withDefaults(defineProps<{
   pointer-events: none;
   opacity: 0;
   white-space: nowrap;
+  max-width: min(300px, calc(100vw - 24px));
   transition: opacity 0.15s ease, transform 0.15s ease;
 }
 
@@ -95,10 +96,16 @@ const props = withDefaults(defineProps<{
   justify-content: space-between;
   gap: 16px;
   line-height: 1.6;
+  min-width: 0;
 }
 
 .ft-label {
   color: var(--text-secondary);
+  min-width: 0;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ft-value {

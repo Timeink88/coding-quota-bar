@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
+import type { WindowPinMode } from '../shared/types';
 
 /**
  * 暴露给 renderer 进程的 API
@@ -85,17 +86,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   showPopup: () => ipcRenderer.send('show-popup'),
 
   /**
-   * 设置窗口锁定状态（防止失焦隐藏）
+   * 设置窗口固定状态（不固定 / 固定置顶 / 固定不置顶）
    */
-  setWindowPinned: (pinned: boolean) => {
-    ipcRenderer.send('set-window-pinned', pinned);
+  setWindowPinned: (mode: WindowPinMode) => {
+    ipcRenderer.send('set-window-pinned', mode);
   },
 
   /**
-   * 监听窗口锁定状态变化
+   * 监听窗口固定状态变化
    */
-  onWindowPinnedState: (callback: (pinned: boolean) => void) => {
-    ipcRenderer.on('window-pinned-state', (_, pinned) => callback(pinned));
+  onWindowPinnedState: (callback: (mode: WindowPinMode) => void) => {
+    ipcRenderer.on('window-pinned-state', (_, mode) => callback(mode));
   },
 
   openExternal: (url: string) => ipcRenderer.invoke('open-external', url),

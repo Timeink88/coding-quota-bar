@@ -313,9 +313,12 @@ const totalRows = computed(() =>
 
 const totalCost = computed(() => {
   if (!props.modelRates) return 0
+  const ratesLower = new Map(
+    Object.entries(props.modelRates).map(([name, rate]) => [name.toLowerCase(), rate])
+  )
   let total = 0
   for (const [model, tokens] of modelTotals.value) {
-    const rate = props.modelRates[model]
+    const rate = ratesLower.get(model.toLowerCase())
     if (rate) total += tokens / 1_000_000 * rate
   }
   return total
@@ -326,9 +329,12 @@ const animatedCost = useAnimatedNumber(totalCost, { duration: 600, decimals: 2 }
 
 const costRows = computed(() => {
   if (!props.modelRates || totalCost.value <= 0) return []
+  const ratesLower = new Map(
+    Object.entries(props.modelRates).map(([name, rate]) => [name.toLowerCase(), rate])
+  )
   return Array.from(modelTotals.value, ([model, tokens]) => {
-    const rate = props.modelRates![model]
-    return { label: model, value: rate ? `¥ ${(tokens / 1_000_000 * rate).toFixed(2)}` : '' }
+    const rate = ratesLower.get(model.toLowerCase())
+    return { label: model, value: rate ? `¥ ${(tokens / 1_000_000 * rate).toFixed(2)}` : '—' }
   })
 })
 
@@ -377,8 +383,8 @@ const chartOptions = computed(() => ({
       boxWidth: 8,
       boxHeight: 8,
       callbacks: {
-        label: (ctx: { dataset: { label?: string }; parsed: { y: number } }) =>
-          `${ctx.dataset.label}: ${formatCount(ctx.parsed.y)}`
+        label: (ctx: { dataset: { label?: string }; parsed: { y: number | null } }) =>
+          `${ctx.dataset.label}: ${formatCount(ctx.parsed.y ?? 0)}`
       }
     }
   },
@@ -400,7 +406,7 @@ const chartOptions = computed(() => ({
       ticks: {
         color: isDark.value ? '#666' : '#999',
         font: { size: 9 },
-        callback: (v: number) => formatCount(v),
+        callback: (v: string | number) => formatCount(Number(v)),
         maxTicksLimit: 4
       },
       grid: { color: isDark.value ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)' },

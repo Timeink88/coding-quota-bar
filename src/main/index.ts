@@ -1,3 +1,4 @@
+import './logger'; // 必须最先导入：在其余模块输出日志前完成生产环境屏蔽
 import { app, BrowserWindow } from 'electron';
 import * as fs from 'node:fs';
 import * as path from 'path';
@@ -17,6 +18,7 @@ import {
   getPopupWindow,
   isPopupVisibleNow,
   resetPopupPosition,
+  resetPopupSize,
 } from './popup-manager';
 import {
   setUpdateManagerDeps,
@@ -40,6 +42,8 @@ import {
   setIpcHandlersDeps,
   setupIpcHandlers,
 } from './ipc-handlers';
+
+app.commandLine.appendSwitch('wm-window-animations-disabled');
 
 // 加载 .env 文件
 const envPath = path.join(__dirname, '..', '..', '.env');
@@ -135,6 +139,9 @@ async function initialize(): Promise<void> {
     onResetPopupPosition: () => {
       resetPopupPosition();
     },
+    onResetPopupSize: () => {
+      resetPopupSize();
+    },
     onQuit: () => {
       app.quit();
     }
@@ -166,7 +173,7 @@ async function initialize(): Promise<void> {
   scheduler.on('refreshed', async () => {
     trayManager?.stopLoading();
 
-    // 自动刷新 DeepSeek token；同步 MiMo 登录状态
+    // 自动刷新 DeepSeek token；同步 MiMo/OpenCode Go 登录状态
     if (!isAutoRefreshingToken) {
       const aggregated = scheduler!.getAggregatedData();
       if (aggregated) {
@@ -205,6 +212,7 @@ async function initialize(): Promise<void> {
             }
           }
         }
+
 
         if (expiredAccounts.length > 0) {
           isAutoRefreshingToken = true;
@@ -313,7 +321,7 @@ function setupConfigListeners(): void {
         destroyPopupWindow();
         console.log('[App] Memory saving mode enabled, destroyed hidden window');
       } else if (!newConfig.memorySavingMode && !getPopupWindow()) {
-        createPopupWindow();
+        createPopupWindow(undefined, '设置变更');
         console.log('[App] Memory saving mode disabled, pre-created window');
       }
     }
@@ -354,7 +362,7 @@ app.whenReady().then(() => {
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      createPopupWindow();
+      createPopupWindow(undefined, '应用激活');
     }
   });
 });

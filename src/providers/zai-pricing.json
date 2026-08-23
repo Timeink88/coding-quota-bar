@@ -1,5 +1,5 @@
 {
-  "description": "智谱 API 模型定价（元/百万token）。GLM-5.1/4.x 等老模型是官方定价（https://open.bigmodel.cn/pricing）；新发布模型（5.2/5.3 等）官方定价页未出，按上一代 × 1.25 估值，见各条 note。",
+  "description": "智谱 API 模型定价（元/百万token）。GLM-5.1/4.x 等为官方定价（https://open.bigmodel.cn/pricing）；官方未公布的模型按相近档位估算，见各条 note。",
   "updatedAt": "2026-08-17",
   "tokenRatio": {
     "cache": 0.96,
@@ -8,8 +8,9 @@
   },
   "fallbackModel": "GLM-5.2",
   "models": {
-    "GLM-5.3":        { "cache": 3,    "input": 12,  "output": 45, "tier": "[32+)", "note": "2026-08-14 发布，官方定价页未列出（API 即将开放，权重两周后开源），按 GLM-5.2 × 1.25 估值" },
-    "GLM-5.2":        { "cache": 2.5, "input": 10,  "output": 36, "tier": "[32+)", "note": "2026-06-13 发布，官方定价页未列出，按 GLM-5.1 × 1.25 估值" },
+    "GLM-5.3":          { "cache": 2,    "input": 8,   "output": 28, "tier": "1M", "note": "2026-08-14 发布，官方按量价未公布，暂按 GLM-5.2 价格估算" },
+    "GLM-5.2":          { "cache": 2,    "input": 8,   "output": 28, "tier": "1M" },
+    "GLM-5.2-HighSpeed": { "cache": 4,    "input": 16,  "output": 56, "tier": "1M", "note": "官方未公布，按 GLM-5.2 价格 2 倍估算" },
     "GLM-5.1":        { "cache": 2,    "input": 8,   "output": 28, "tier": "[32+)" },
     "GLM-5-Turbo":    { "cache": 1.8,  "input": 7,   "output": 26, "tier": "[32+)" },
     "GLM-5":          { "cache": 1.5,  "input": 6,   "output": 22, "tier": "[32+)" },

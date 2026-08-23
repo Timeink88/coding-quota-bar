@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { autoUpdater } from 'electron-updater';
 import type { ConfigManager } from './config';
 import type { Scheduler } from './scheduler';
-import type { ConcurrencyTestConfig, ProviderTypeConfig } from '../shared/types';
+import type { ConcurrencyTestConfig, ProviderTypeConfig, WindowPinMode } from '../shared/types';
 import { ConcurrencyTestEngine } from './concurrency-test';
 import { DeepSeekProvider } from '../providers/deepseek';
 import { MiMoProvider } from '../providers/mimo';
@@ -32,9 +32,7 @@ const PROVIDER_CLASSES: Record<string, new () => Provider> = {
 import {
   showPopupWindow,
   getPopupWindow,
-  setWindowLocked,
-  attachBlurHandler,
-  detachBlurHandler,
+  setWindowPinMode,
   getPopupMode,
   notifyHoverState,
   destroyPopupWindow,
@@ -69,16 +67,13 @@ export function setupIpcHandlers(): void {
     showPopupWindow('pinned');
   });
 
-  // 窗口锁定状态切换
-  ipcMain.on('set-window-pinned', (_, pinned: boolean) => {
-    setWindowLocked(pinned);
-    if (pinned && getPopupMode() === 'hover') {
+  // 窗口固定状态切换（三态：不固定 / 固定置顶 / 固定不置顶）
+  ipcMain.on('set-window-pinned', (_, mode: WindowPinMode) => {
+    if (mode !== 'unpinned' && getPopupMode() === 'hover') {
       showPopupWindow('pinned');
     }
-    if (getPopupMode() === 'pinned') {
-      pinned ? detachBlurHandler() : attachBlurHandler();
-    }
-    getPopupWindow()?.webContents.send('window-pinned-state', pinned);
+    setWindowPinMode(mode);
+    getPopupWindow()?.webContents.send('window-pinned-state', mode);
   });
 
   // 获取当前用量数据

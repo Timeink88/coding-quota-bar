@@ -20,6 +20,10 @@
 - 修复分模型费用明细与总费用不一致的 bug：之前 STATIC_MODEL_RATES 不含运行时模型，改用 buildRuntimeModelRates 走同 getPricing() 兜底，保证"总额 = 明细加总"
 - 修复 GLM-5.2 估值可能与实际官方价偏差：note 里说明"按 × 1.25 暂估"，等官方定价出来后校准
 
+### Merged
+- 合并上游 v1.4.3 – v1.5.1 全部改动：弹窗窗口三态固定/纵向调整尺寸/重置大小、MiMo 套餐过期与补偿额度修复、智谱到期徽章与 GLM-5.2-HighSpeed 定价、DeepSeek 状态页 Flashcat 适配、图表类型修复
+- OpenCode Go 采用官方 API（`/zen/go/v1/usage` + API Key）实现，替代上游的隐藏窗口网页抓取方案（性能更好、解析更稳）
+
 ### Changed
 - 智谱 Provider 暴露 periodHours 到 QuotaItem（从 ZhipuLimitItem.unit/number 计算）
 - package.json 添加 devDependencies 字段（electron / electron-vite / electron-builder / vite / typescript / @types/node / @vitejs/plugin-vue / tsx）+ scripts（dev/build/start/typecheck/pack/dist/verify:*）
@@ -27,6 +31,17 @@
 - 阈值滑块加 ARIA 属性（role="slider" + aria-valuenow），状态点/状态徽标加 aria-label，icon-btn 加 tabindex
 - 全局 window.onerror 监听 → 主进程写 log 文件，诊断页加"查看日志"按钮
 - .gitignore 加 release-v*/ 模式防误 commit 380MB 包体
+
+## [1.5.1] - 2026-08-18
+### Added
+- 固定窗口按钮升级为三态切换：不固定 → 固定且置顶 → 固定且不置顶
+- 弹窗支持调整高度：可拖动窗口下边缘纵向拉伸，大小可被记忆
+- 托盘右键菜单新增「重置窗口大小」：一键恢复默认窗口尺寸
+- 智谱新模型 GLM-5.3 可估算所用 Token 费用
+
+### Fixed
+- 修复多显示器窗口裁切问题
+- 修复智谱套餐过期后不正确显示已过期问题
 
 ## [1.5.0] - 2026-07-24
 ### Added
@@ -51,6 +66,27 @@
 - 托盘图标支持高 DPI 2x 渲染，三位数使用窄字体防贴边
 - 智谱辅助数据请求改为限流并发（2 路）+ allSettled，关键请求使用更高重试次数
 - 默认禁用远程更新检查，移除自动发布配置
+## [1.5.0] - 2026-06-24
+### Added
+- 添加 opencode go 套餐支持
+
+## [1.4.5] - 2026-06-17
+### Fixed
+- DeepSeek 部分显示异常的修复
+### Added
+- GLM 5.2 API价格更新
+
+## [1.4.4] - 2026-06-11
+## Fixed
+- 修复 MiMo 套餐过期显示问题
+
+## [1.4.3] - 2026-06-07
+### Fixed
+- 修复Deepseek无使用量时显示空白的问题
+- 适配Minimax新查询格式
+
+### Added
+- 添加Mimo用量图表和Token值估算功能
 
 ## [1.4.2] - 2026-05-07
 ### Fixed

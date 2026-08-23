@@ -35,8 +35,9 @@ defineProps<{
 }>()
 
 function svcName(svc: DeepSeekServiceComponent): string {
-  if (svc.id === 'j4n367d9mh3x') return t('quota.deepseekApiService')
-  if (svc.id === 'b76wbf9n5nq3') return t('quota.deepseekWebService')
+  // Flashcat 组件 ID（2026-06 迁移后）
+  if (svc.id === '01KR3NC9ETZYF436Z8YT1HM047') return t('quota.deepseekApiService')
+  if (svc.id === '01KR3NC9ETESRRQ4GABE0TGW53') return t('quota.deepseekWebService')
   return svc.name
 }
 
@@ -98,7 +99,7 @@ function dayTitle(offsetFromEnd: number): string {
 }
 
 .svc-name.link:hover {
-  color: var(--color-primary);
+  color: var(--text-primary);
 }
 
 .svc-uptime {

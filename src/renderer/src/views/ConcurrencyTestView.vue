@@ -141,14 +141,14 @@ import type { ApiFormat, ConcurrencyTestResult } from '../types'
 
 defineEmits<{ 'go-back': [] }>()
 
-const ZHIPU_CODING_MODELS = ['GLM-5.1', 'GLM-5-Turbo', 'GLM-5v-Turbo', 'GLM-4.7', 'GLM-4.5-Air'] as const
+const ZHIPU_CODING_MODELS = ['GLM-5.2', 'GLM-5-Turbo', 'GLM-5v-Turbo', 'GLM-4.7', 'GLM-4.5-Air'] as const
 
 const { t } = useI18n()
 
 const models = ZHIPU_CODING_MODELS
 const concurrencyOptions = [1, 3, 5, 10, 15, 20, 30, 50]
 
-const selectedModel = ref<string>('GLM-5.1')
+const selectedModel = ref<string>('GLM-5.2')
 const concurrency = ref(10)
 const apiFormat = ref<ApiFormat>('openai')
 const testing = ref(false)

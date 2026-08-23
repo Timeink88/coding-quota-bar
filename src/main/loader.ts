@@ -55,7 +55,9 @@ export class ProviderLoader {
     const availableKeys = new Set(getAvailableProviderKeys());
     const loaded: LoadedProvider[] = [];
 
-    for (const [type, providerConfig] of Object.entries(providerConfigs)) {
+    for (const [rawType, providerConfig] of Object.entries(providerConfigs)) {
+      // 上游 v1.4.3–v1.5.1 使用 opencodego 作为配置键，这里统一映射到 opencode-go
+      const type = rawType === 'opencodego' ? 'opencode-go' : rawType;
       // 编译时未标记为 available 的直接跳过
       if (!availableKeys.has(type)) {
         continue;
