@@ -162,6 +162,7 @@ export class ConfigManager extends EventEmitter {
           ...acc,
           authMode: 'apikey' as const,
           webToken: undefined,
+          opencodegoLoggedIn: undefined,
         }));
         if (target?.accounts) {
           const ids = new Set(target.accounts.map(a => a.id));
