@@ -270,9 +270,9 @@ export function generateMockData(): Record<string, UsageResult> {
       details: {
         parallelLimit: 20,
         quotas: [
-          { label: 'quota.kimi5h', used: 12, total: 100, usageRate: 12, resetAt: new Date(now + 2 * HOUR).toISOString(), startAt: new Date(now - 3 * HOUR).toISOString(), periodHours: 5, limitType: 'kimi-5h', displayUnit: 'count' },
-          { label: 'quota.kimiWeekly', used: 48, total: 100, usageRate: 48, resetAt: new Date(now + 3 * DAY).toISOString(), periodHours: 168, limitType: 'kimi', displayUnit: 'count' },
-          { label: 'quota.kimiMonthly', used: 210, total: 400, usageRate: 52.5, resetAt: new Date(now + 12 * DAY).toISOString(), periodHours: 720, limitType: 'kimi-monthly', displayUnit: 'count' },
+          { label: 'quota.kimi5h', used: 12, total: 100, usageRate: 12, resetAt: new Date(now + 2 * HOUR).toISOString(), startAt: new Date(now - 3 * HOUR).toISOString(), periodHours: 5, limitType: 'kimi-5h' },
+          { label: 'quota.kimiWeekly', used: 48, total: 100, usageRate: 48, resetAt: new Date(now + 3 * DAY).toISOString(), periodHours: 168, limitType: 'kimi' },
+          { label: 'quota.kimiMonthly', used: 210, total: 400, usageRate: 52.5, resetAt: new Date(now + 12 * DAY).toISOString(), periodHours: 720, limitType: 'kimi-monthly' },
         ],
       },
     },

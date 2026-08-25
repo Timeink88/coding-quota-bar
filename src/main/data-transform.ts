@@ -60,6 +60,8 @@ export interface AccountDisplayData {
   balance?: { total: string; gift: string; cash: string; frozen: string; currency: string };
   limitReached?: boolean;
   codexOrgName?: string;
+  /** Kimi 并发上限（parallel.limit） */
+  parallelLimit?: number;
 }
 
 /**
@@ -227,6 +229,7 @@ function convertAccountData(
     balance: (result.details?.balance as { total: string; gift: string; cash: string; frozen: string; currency: string }) ?? undefined,
     limitReached: (result.details?.limitReached as boolean) ?? undefined,
     codexOrgName: (result.details?.codexOrgName as string) ?? undefined,
+    parallelLimit: (result.details?.parallelLimit as number) ?? undefined,
   };
 }
 

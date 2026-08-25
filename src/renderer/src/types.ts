@@ -104,6 +104,8 @@ export interface AccountUsageData {
   balance?: { total: string; gift: string; cash: string; frozen: string; currency: string }
   limitReached?: boolean
   codexOrgName?: string
+  /** Kimi 并发上限（parallel.limit） */
+  parallelLimit?: number
 }
 
 /**

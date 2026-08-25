@@ -276,7 +276,6 @@ export class KimiProvider implements Provider {
         ...(startAt ? { startAt } : {}),
         ...(row.periodHours != null ? { periodHours: row.periodHours } : {}),
         limitType,
-        displayUnit: 'count' as const,
       };
     });
 

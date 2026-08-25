@@ -38,26 +38,8 @@
           </svg>
         </button>
       </div>
-      <div
-        v-if="providers.length > 1"
-        class="provider-arrow"
-        :class="{ 'arrow-hidden': showTabs }"
-        @mouseenter="onTabsAreaEnter"
-        @mouseleave="onTabsAreaLeave"
-      >
-        <svg width="10" height="6" viewBox="0 0 10 6">
-          <path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-        </svg>
-      </div>
-      <div
-        v-if="providers.length > 1"
-        class="provider-arrow-hit"
-        :class="{ 'arrow-hidden': showTabs }"
-        @mouseenter="onTabsAreaEnter"
-        @mouseleave="onTabsAreaLeave"
-      ></div>
     </header>
-    <div v-if="providers.length > 1" class="provider-tabs" :class="{ expanded: showTabs }" @mouseenter="onTabsAreaEnter" @mouseleave="onTabsAreaLeave" @wheel.passive="onTabsWheel">
+    <div v-if="providers.length > 1" class="provider-tabs" @wheel.passive="onTabsWheel">
       <button
         class="provider-tab"
         :class="{ active: showOverview }"
@@ -212,18 +194,7 @@ const initialLoading = ref(true)
 const updateNotification = ref<{ version: string } | null>(null)
 const now = ref(Date.now())
 const pinMode = ref<WindowPinMode>('unpinned')
-const showTabs = ref(false)
-let hideTimer: ReturnType<typeof setTimeout> | null = null
 let offUpdateStatus: (() => void) | null = null
-
-function onTabsAreaEnter() {
-  if (hideTimer) { clearTimeout(hideTimer); hideTimer = null }
-  showTabs.value = true
-}
-
-function onTabsAreaLeave() {
-  hideTimer = setTimeout(() => { showTabs.value = false }, 150)
-}
 
 // Provider Tab 状态
 // 不持久化 active-provider：每次打开面板默认回到总览看盘（用户主视图），
@@ -432,48 +403,6 @@ onUnmounted(() => {
   position: relative;
 }
 
-.provider-arrow {
-  position: absolute;
-  bottom: -14px;
-  left: 50%;
-  transform: translateX(-50%);
-  -webkit-app-region: no-drag;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 14px;
-  cursor: pointer;
-  color: var(--text-tertiary);
-  opacity: 0.4;
-  transition: opacity 0.2s, color 0.2s;
-  z-index: 20;
-}
-
-.provider-arrow:hover {
-  opacity: 1;
-  color: var(--text-secondary);
-}
-
-.provider-arrow.arrow-hidden {
-  opacity: 0 !important;
-  pointer-events: none;
-}
-
-.provider-arrow-hit {
-  position: absolute;
-  bottom: -14px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 180px;
-  height: 14px;
-  z-index: 19;
-}
-
-.provider-arrow-hit.arrow-hidden {
-  pointer-events: none;
-}
-
 .main-body {
   flex: 1;
   overflow-y: auto;
@@ -488,35 +417,23 @@ onUnmounted(() => {
   margin-bottom: 10px;
 }
 
+/* 标签栏常驻显示：总览（看盘）入口必须始终可见，不再折叠隐藏 */
 .provider-tabs {
   display: flex;
   justify-content: center;
   gap: 2px;
   background: var(--bg-tab-bar);
   border-radius: 8px;
-  max-height: 0;
-  overflow: hidden;
-  overflow-x: hidden;
-  opacity: 0;
-  margin: 0 10px;
-  padding: 0 2px;
-  transition: max-height 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-              opacity 0.2s ease,
-              margin 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-              padding 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.provider-tabs.expanded {
-  max-height: 40px;
   overflow-x: auto;
   opacity: 1;
+  margin: 0 10px;
   margin-bottom: 8px;
   padding: 2px;
   scrollbar-width: none;
   -ms-overflow-style: none;
   scrollbar-gutter: stable;
 }
-.provider-tabs.expanded::-webkit-scrollbar {
+.provider-tabs::-webkit-scrollbar {
   display: none;
 }
 

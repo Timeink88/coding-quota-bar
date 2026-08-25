@@ -237,6 +237,7 @@
     "kimi5h": "5小时额度",
     "kimiMonthly": "月额度",
     "usedCount": "已用 {used}/{total} 次",
+    "kimiParallel": "并发上限 {n}",
     "openrouterBudget": "月度预算",
     "openrouterSpend": "本月消费",
     "openrouterSpendUnlimited": "本月消费（无上限）",

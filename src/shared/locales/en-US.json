@@ -237,6 +237,7 @@
     "kimi5h": "5-Hour Quota",
     "kimiMonthly": "Monthly Quota",
     "usedCount": "{used}/{total} used",
+    "kimiParallel": "Parallel limit {n}",
     "openrouterBudget": "Monthly Budget",
     "openrouterSpend": "Spent This Month",
     "openrouterSpendUnlimited": "Spent This Month (No Limit)",

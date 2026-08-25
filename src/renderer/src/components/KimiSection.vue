@@ -3,12 +3,13 @@
     <KimiQuotaCard
       :label="q.label"
       :label-params="q.labelParams"
-      :used="q.used"
-      :total="q.total"
       :usage-rate="q.usageRate"
       :reset-at="q.resetAt"
       :color="q.color ?? 'green'"
     />
+  </div>
+  <div v-if="account.parallelLimit != null" class="parallel-line">
+    {{ $t('quota.kimiParallel', { n: account.parallelLimit }) }}
   </div>
 </template>
 
@@ -35,5 +36,12 @@ const sortedQuotas = computed<QuotaItem[]>(() => {
 <style scoped>
 .quota-row-single {
   margin-bottom: 6px;
+}
+
+.parallel-line {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  text-align: right;
+  padding-right: 2px;
 }
 </style>

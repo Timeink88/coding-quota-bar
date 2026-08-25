@@ -8,7 +8,7 @@
       <div class="progress-fill" :style="progressStyle"></div>
     </div>
     <div class="card-bottom">
-      <span class="used-text">{{ $t('quota.usedCount', { used, total }) }}</span>
+      <span class="used-text">{{ $t('quota.usedPercent', { n: Math.round(usageRate) }) }}</span>
       <span class="reset-text" :title="resetAbsolute">{{ resetCountdown }}</span>
     </div>
   </div>
@@ -22,8 +22,6 @@ import { useAnimatedNumber } from '../composables/useAnimatedNumber'
 const props = defineProps<{
   label: string
   labelParams?: Record<string, string | number>
-  used: number
-  total: number
   usageRate: number
   resetAt: string
   color: 'green' | 'yellow' | 'red'
