@@ -64,7 +64,8 @@ interface NormalizedRow {
 
 function firstFinite(...values: Array<number | string | undefined>): number | undefined {
   for (const v of values) {
-    if (v == null) continue;
+    // 跳过 null/undefined 和空字符串：Number('') === 0 会把缺失字段误判为 0
+    if (v == null || v === '') continue;
     const n = typeof v === 'number' ? v : Number(v);
     if (Number.isFinite(n)) return n;
   }

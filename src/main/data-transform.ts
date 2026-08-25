@@ -162,18 +162,18 @@ function convertAccountData(
 ): AccountDisplayData {
   const quotas: QuotaDisplayItem[] = (result.details?.quotas ?? []).map(q => ({
     label: q.label,
-    labelParams: (q as any).labelParams,
+    labelParams: q.labelParams,
     used: q.used,
     total: q.total,
     usageRate: q.usageRate,
     resetAt: q.resetAt,
-    startAt: (q as any).startAt,
+    startAt: q.startAt,
     periodHours: q.periodHours,
     color: getColorByPercent(Math.max(0, 100 - q.usageRate), thresholds) as 'green' | 'yellow' | 'red',
     limitType: q.limitType,
-    hideBar: (q as any).hideBar,
-    displayUnit: (q as any).displayUnit,
-    currency: (q as any).currency,
+    hideBar: q.hideBar,
+    displayUnit: q.displayUnit,
+    currency: q.currency,
   }));
 
   const mapHistory = (key: string): SharedUsageRecord[] =>
@@ -194,7 +194,11 @@ function convertAccountData(
       proMaxSuccessRate: r.proMaxSuccessRate,
     }));
 
-  console.log(`[Data] ${type}:${accountId} 1d:${mapHistory('history1d').length} 7d:${mapHistory('history7d').length} 30d:${mapHistory('history30d').length}`);
+  // 先算一次再复用：避免日志和返回值各自 map 一遍（每次 IPC 刷新都会执行）
+  const history1d = mapHistory('history1d');
+  const history7d = mapHistory('history7d');
+  const history30d = mapHistory('history30d');
+  console.log(`[Data] ${type}:${accountId} 1d:${history1d.length} 7d:${history7d.length} 30d:${history30d.length}`);
 
   return {
     id: accountId,
@@ -205,9 +209,9 @@ function convertAccountData(
     error: result.error,
     currency: (result.details?.currency as string) || undefined,
     quotas,
-    history1d: mapHistory('history1d'),
-    history7d: mapHistory('history7d'),
-    history30d: mapHistory('history30d'),
+    history1d,
+    history7d,
+    history30d,
     totalTokens1d: (result.details?.totalTokens1d as number) ?? 0,
     totalTokens7d: (result.details?.totalTokens7d as number) ?? 0,
     totalTokens30d: (result.details?.totalTokens30d as number) ?? 0,

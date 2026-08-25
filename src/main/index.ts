@@ -2,6 +2,17 @@ import './logger'; // 必须最先导入：在其余模块输出日志前完成�
 import { app, BrowserWindow } from 'electron';
 import * as fs from 'node:fs';
 import * as path from 'path';
+
+// 托盘常驻应用防崩：stdout/stderr 管道被父进程关闭时（如 dev 终端先退出），
+// 日志写入抛 EPIPE 会变成未捕获异常弹窗。静默丢弃 EPIPE，其余错误照常抛出。
+// 打包环境 console.log 已被 no-op，此防御主要覆盖 dev 模式。
+for (const stream of [process.stdout, process.stderr]) {
+  stream?.on?.('error', (err: NodeJS.ErrnoException) => {
+    if (err.code === 'EPIPE') return;
+    throw err;
+  });
+}
+
 import { TrayManager } from './tray';
 import { ProviderLoader } from './loader';
 import { Scheduler, createScheduler } from './scheduler';
@@ -10,6 +21,7 @@ import { setLocale } from './i18n';
 import {
   setPopupManagerDeps,
   createPopupWindow,
+  showPopupWindow,
   openSettings,
   onTrayMouseEnter,
   onTrayMouseLeave,
@@ -153,6 +165,35 @@ async function initialize(): Promise<void> {
   // 5. 预创建弹出窗口
   if (config.memorySavingMode !== true) {
     createPopupWindow();
+  }
+
+  // 截图/调试辅助：CQB_SHOW_POPUP=1 时启动即以固定模式显示弹窗（跳过托盘交互）
+  if (process.env.CQB_DEV === '1' && process.env.CQB_SHOW_POPUP === '1') {
+    setTimeout(() => showPopupWindow('pinned'), 2500);
+    // CQB_TAB=<n>：显示后自动切到第 n 个 provider 标签（0=总览，1=智谱 …）
+    if (process.env.CQB_TAB) {
+      const idx = Number(process.env.CQB_TAB);
+      setTimeout(() => {
+        getPopupWindow()?.webContents
+          .executeJavaScript(`document.querySelectorAll('.provider-tab')[${idx}]?.click()`)
+          .catch(() => {});
+      }, 4000);
+    }
+    // CQB_SHOT=<绝对路径>：capturePage 直接导出弹窗窗口 PNG（物理分辨率，无裁剪误差）
+    if (process.env.CQB_SHOT) {
+      setTimeout(async () => {
+        try {
+          const win = getPopupWindow();
+          if (win && !win.isDestroyed()) {
+            const image = await win.webContents.capturePage();
+            fs.writeFileSync(process.env.CQB_SHOT, image.toPNG());
+            console.log(`[Shot] Popup captured to ${process.env.CQB_SHOT}`);
+          }
+        } catch (e) {
+          console.error('[Shot] capture failed:', e);
+        }
+      }, 6000);
+    }
   }
 
   // 6. 创建调度器

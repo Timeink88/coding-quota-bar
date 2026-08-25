@@ -424,6 +424,17 @@ export function setupIpcHandlers(): void {
     const configManager = _getConfigManager();
     if (!configManager) return { ok: false, error: 'ConfigManager 未初始化' };
     try {
+      // 防御性校验：渲染层传回的数据可能来自任意 JSON 文件，
+      // providers 结构异常时拒绝写入，避免损坏现有配置
+      if (data.providers == null || typeof data.providers !== 'object' || Array.isArray(data.providers)) {
+        return { ok: false, error: '文件格式错误：providers 必须是对象' };
+      }
+      for (const provider of Object.values(data.providers)) {
+        const accounts = (provider as any)?.accounts;
+        if (accounts != null && !Array.isArray(accounts)) {
+          return { ok: false, error: '文件格式错误：accounts 必须是数组' };
+        }
+      }
       // 提取可写字段
       const updates: any = {}
       if (data.providers) updates.providers = data.providers

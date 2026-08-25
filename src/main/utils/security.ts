@@ -16,6 +16,8 @@ const ALLOWED_EXTERNAL_HOSTS = new Set<string>([
   'platform.xiaomimimo.com',
   'chatgpt.com',
   'opencode.ai',
+  'www.kimi.com',
+  'openrouter.ai',
   'github.com',  // 用于错误反馈
 ]);
 

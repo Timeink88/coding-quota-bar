@@ -1,4 +1,4 @@
-# 订阅套餐 & 余量查询方法（GLM / MiniMax / DeepSeek / OpenCode Go / Kimi）
+# 订阅套餐 & 余量查询方法（GLM / MiniMax / DeepSeek / OpenCode Go / Kimi / OpenRouter）
 
 > 适用范围：`coding-quota-bar` 项目 `src/providers/*` 实现
 > 更新时间：2026-08-25
@@ -15,8 +15,9 @@
 3. [DeepSeek](#3-deepseek)
 4. [OpenCode Go](#4-opencode-go)
 5. [Kimi（Kimi Coding）](#5-kimikimi-coding)
-6. [通用实现细节](#6-通用实现细节)
-7. [复现命令速查](#7-复现命令速查)
+6. [OpenRouter（API 消费预算）](#6-openrouterapi-消费预算)
+7. [通用实现细节](#7-通用实现细节)
+8. [复现命令速查](#8-复现命令速查)
 
 ---
 
@@ -474,7 +475,7 @@ User-Agent: KimiCLI/1.6
 - `timeUnit` 为 `TIME_UNIT_MINUTE` 这类带前缀枚举，`duration: 300`（分钟）→ 5h 窗口
 - 顶层 `usage` 为**周额度**；`limits[].detail` 只有 `remaining` 没有 `used`，`used = limit - remaining`
 - **`totalQuota` 为月度总限额**（结构与 usage 相同）；无月度限额的套餐返回空对象 `{}`，此时不渲染月度卡片（对齐 baigong-ai/kimi-planbar 的行为）
-- `parallel.limit` 为并发上限，存入 `details.parallelLimit`（UI 暂不展示）
+- `parallel.limit` 为并发上限，存入 `details.parallelLimit`，Kimi 页底部显示"并发上限 n"信息行
 - `user.membership.level` 经 `KIMI_LEVEL_NAMES` 映射为套餐名，未命中回退剥前缀小写。映射表（2026-08 实测锚定，注意枚举码在 Allegro/Vivace 上线时发生过位移）：
 
 | 枚举 | 套餐 | 规格（CN） |
@@ -519,9 +520,56 @@ User-Agent: KimiCLI/1.6
 
 ---
 
-## 6. 通用实现细节
+## 6. OpenRouter（API 消费预算）
 
-### 6.1 Provider 接口契约
+**实现文件**：`src/providers/openrouter.ts`（`OpenRouterProvider`，整合自 slkiser/opencode-quota）
+**默认 baseUrl**：`https://openrouter.ai`
+**鉴权方式**：Bearer API Key
+**API Key 申请**：https://openrouter.ai/keys
+
+额度语义与订阅套餐不同：这是 **API 消费预算（美元计价）**，不是 token 窗口。
+
+### 6.1 接口清单（只 1 个端点）
+
+| 端点 | 用途 |
+|---|---|
+| `GET {base}/api/v1/key` | 查 key 信息（消费金额 + 预算上限） |
+
+### 6.2 响应结构
+
+```json
+{
+  "data": {
+    "label": "sk-or-...",
+    "usage": 12.53,
+    "limit": 50,
+    "is_free_tier": false,
+    "rate_limit": { "requests": 200, "interval": "10s" }
+  }
+}
+```
+
+- `usage`：本计费周期已消费金额（美元）
+- `limit`：月度预算上限（美元）；`null` 表示未设上限（按量后付费）
+
+### 6.3 两种展示形态
+
+| 条件 | 主指标 | 卡片 |
+|---|---|---|
+| `limit` 有值 | 月度预算百分比 | 预算百分比卡（`quota.openrouterBudget`）+ 消费金额行（`quota.openrouterSpend`，hideBar） |
+| `limit` 为 null | 消费金额文本 | 仅消费金额行（`quota.openrouterSpendUnlimited`，hideBar，托盘视为额度充足） |
+
+### 6.4 实现要点
+
+- **数值容错**：`usage` 缺失按 0 处理；`limit` 仅接受 `> 0` 的数字，其余视为未设上限。
+- **usageRate 口径**：已用百分比 `usage / limit * 100`，clamp 到 0-100，保留 1 位小数。
+- **错误**：401 抛 Key 无效提示；429 抛限流提示；其余 ≥400 抛带响应体前 200 字符的错误。
+
+---
+
+## 7. 通用实现细节
+
+### 7.1 Provider 接口契约
 
 ```ts
 // src/shared/types.ts
@@ -556,7 +604,7 @@ interface QuotaItem {
 }
 ```
 
-### 6.2 HttpClientWithRetry
+### 7.2 HttpClientWithRetry
 
 `src/main/http.ts` 实现，所有 provider 共用：
 
@@ -566,16 +614,16 @@ new HttpClientWithRetry(maxRetries, baseDelayMs)
 // 关键请求（如 zhipu quota）：5 次重试，1.2 秒基础退避
 ```
 
-退避策略：指数退避（`baseDelay * 2^attempt`）。
+退避策略：线性退避 + 随机抖动（`baseDelay * (attempt + 1)` + `Math.random() * baseDelay`）；瞬时网络错误（连接重置/超时等）额外 ×1.5 加长退避以等待坏连接/代理恢复。
 
-### 6.3 时区与时间戳
+### 7.3 时区与时间戳
 
 - **智谱**：`nextResetTime` 是毫秒时间戳。
 - **MiniMax**：`start_time / end_time` 可能是秒或毫秒（`n < 1e12` 判秒）。
 - **DeepSeek / OpenCode Go**：`resetsAt` 是带时区 ISO（`Date.parse` 解析）。
 - 全部统一输出 ISO（`toISOString()`）给 UI。
 
-### 6.4 Provider 注册
+### 7.4 Provider 注册
 
 ```ts
 // src/main/loader.ts
@@ -584,7 +632,7 @@ const PROVIDER_CLASSES = {
   'minimax': MiniMaxProvider,
   'deepseek': DeepSeekProvider,
   'opencode-go': OpenCodeGoProvider,
-  // 还有 mimo, codex, kimi
+  // 还有 mimo, codex, kimi, openrouter
 };
 ```
 
@@ -595,15 +643,15 @@ const PROVIDER_CLASSES = {
 
 `available: true` 决定 SettingsView 是否展示该 provider；`envVar` 是文档约定的环境变量名（不强制读取）；`baseUrl` 是默认 baseUrl；`websiteUrl` 是「获取 API Key」链接。
 
-### 6.5 i18n 键
+### 7.5 i18n 键
 
 每个 provider 都有独立的 quota 标签键，渲染时由前端 i18n 翻译。所有键都在 `src/shared/locales/zh-CN.json` 和 `en-US.json` 双份维护，**写漏一份前端就显示 raw key**。
 
 ---
 
-## 7. 复现命令速查
+## 8. 复现命令速查
 
-### 7.1 GLM 余额
+### 8.1 GLM 余额
 
 ```powershell
 $env:GLM_KEY = 'your-api-key'
@@ -611,7 +659,7 @@ $headers = @{ 'Authorization' = "Bearer $env:GLM_KEY" }
 Invoke-RestMethod -Uri 'https://bigmodel.cn/api/monitor/usage/quota/limit' -Headers $headers | ConvertTo-Json -Depth 8
 ```
 
-### 7.2 MiniMax 余额
+### 8.2 MiniMax 余额
 
 ```powershell
 $env:MINIMAX_KEY = 'your-api-key'
@@ -619,7 +667,7 @@ $headers = @{ 'Authorization' = "Bearer $env:MINIMAX_KEY" }
 Invoke-RestMethod -Uri 'https://www.minimaxi.com/v1/token_plan/remains' -Headers $headers | ConvertTo-Json -Depth 6
 ```
 
-### 7.3 DeepSeek 余额（API Key 模式）
+### 8.3 DeepSeek 余额（API Key 模式）
 
 ```powershell
 $env:DS_KEY = 'sk-...'
@@ -627,7 +675,7 @@ $headers = @{ 'Authorization' = "Bearer $env:DS_KEY" }
 Invoke-RestMethod -Uri 'https://api.deepseek.com/user/balance' -Headers $headers
 ```
 
-### 7.4 DeepSeek 明细（WebLogin 模式）
+### 8.4 DeepSeek 明细（WebLogin 模式）
 
 需先从浏览器登录 `https://platform.deepseek.com` → DevTools → `JSON.parse(localStorage.userToken).value` 提取 token。
 
@@ -648,7 +696,7 @@ Invoke-RestMethod -Uri "https://platform.deepseek.com/api/v0/usage/amount?month=
 Invoke-RestMethod -Uri "https://platform.deepseek.com/api/v0/usage/cost?month=$month&year=$year" -Headers $headers
 ```
 
-### 7.5 OpenCode Go 用量
+### 8.5 OpenCode Go 用量
 
 ```powershell
 $env:OPENCODE_GO_KEY = 'sk-...'
@@ -656,19 +704,27 @@ $headers = @{ 'Authorization' = "Bearer $env:OPENCODE_GO_KEY"; 'Accept' = 'appli
 Invoke-RestMethod -Uri 'https://opencode.ai/zen/go/v1/usage' -Headers $headers | ConvertTo-Json -Depth 6
 ```
 
-### 7.6 服务状态（DeepSeek 专用）
+### 8.6 服务状态（DeepSeek 专用）
 
 ```powershell
 Invoke-RestMethod -Uri 'https://status.deepseek.com/api/v2/summary.json' | ConvertTo-Json -Depth 4
 Invoke-RestMethod -Uri 'https://status.deepseek.com/api/v2/incidents.json' | ConvertTo-Json -Depth 4
 ```
 
-### 7.7 Kimi 用量
+### 8.7 Kimi 用量
 
 ```powershell
 $env:KIMI_KEY = 'sk-kimi-...'
 $headers = @{ 'Authorization' = "Bearer $env:KIMI_KEY"; 'User-Agent' = 'KimiCLI/1.6' }
 Invoke-RestMethod -Uri 'https://api.kimi.com/coding/v1/usages' -Headers $headers | ConvertTo-Json -Depth 6
+```
+
+### 8.8 OpenRouter Key 信息
+
+```powershell
+$env:OPENROUTER_KEY = 'sk-or-...'
+$headers = @{ 'Authorization' = "Bearer $env:OPENROUTER_KEY" }
+Invoke-RestMethod -Uri 'https://openrouter.ai/api/v1/key' -Headers $headers | ConvertTo-Json -Depth 6
 ```
 
 ---
@@ -681,6 +737,8 @@ Invoke-RestMethod -Uri 'https://api.kimi.com/coding/v1/usages' -Headers $headers
 | MiniMax | 无显式套餐字段，通过 status 区分有限/无限 | Token Plan | 5h 滚动 + 自然周 |
 | DeepSeek | 余额即套餐额度 | 充值为 `topped_up_balance`，赠送为 `granted_balance` | 按量扣费，无重置 |
 | OpenCode Go | `OPENCODE_API_KEY` 本身绑定 Go 订阅 | Go 订阅（$5/10） | 5h 滚动 + 自然周 + 自然月 |
+| Kimi | `user.membership.level` 枚举映射套餐名 | Allegretto 等（见 5.3 映射表） | 5h 滚动 + 周 + 月（有月度限额的套餐） |
+| OpenRouter | 无套餐概念，`data.limit` 为月度预算 | 预付预算 / 后付费 | 按月计费周期消费 |
 
 ## 附录 B：API Key 申请入口
 
@@ -691,6 +749,8 @@ Invoke-RestMethod -Uri 'https://api.kimi.com/coding/v1/usages' -Headers $headers
 | DeepSeek | https://platform.deepseek.com/api_keys | 可仅 API Key 模式 |
 | DeepSeek WebLogin | https://platform.deepseek.com | 登录后用 DevTools 提 token |
 | OpenCode Go | https://opencode.ai/auth | 订阅后创建 key |
+| Kimi | https://www.kimi.com/coding/ | Kimi Coding 平台的 `sk-kimi-` Key |
+| OpenRouter | https://openrouter.ai/keys | 充值后创建 key |
 
 ## 附录 C：错误码速查
 
@@ -706,6 +766,8 @@ Invoke-RestMethod -Uri 'https://api.kimi.com/coding/v1/usages' -Headers $headers
 | Kimi | HTTP 404 | `/usages` 路径不存在（旧版服务） | 自动回退重试 `/usage` |
 | Kimi | HTTP 429 | 请求过于频繁 | 抛 `[Kimi] Rate limited (429)` |
 | Kimi | 响应无可识别行 | 结构变化 | 抛 `[Kimi] Empty usage data` |
+| OpenRouter | HTTP 401 | Key 无效或已删除 | 抛 `[OpenRouter] Unauthorized (401)` |
+| OpenRouter | 响应无 `data` 块 | 结构变化 | 抛 `[OpenRouter] Invalid response: missing data block` |
 
 ## 附录 D：相关源文件清单
 

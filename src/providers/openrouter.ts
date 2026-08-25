@@ -62,7 +62,9 @@ export class OpenRouterProvider implements Provider {
       throw new Error('[OpenRouter] Invalid response: missing data block');
     }
 
+    // usage 可能缺失/为非数字串：?? 0 兜 null/undefined，|| 0 兜 Number() 转出的 NaN
     const usage = Number(parsed.data.usage ?? 0) || 0;
+    // limit 仅接受正数：null（未设预算）、0 或非法值一律按"无上限"处理
     const limit = typeof parsed.data.limit === 'number' && parsed.data.limit > 0 ? parsed.data.limit : null;
 
     const spendText = limit != null
@@ -92,7 +94,8 @@ export class OpenRouterProvider implements Provider {
               labelParams: { amount: spendText },
               used: usage,
               total: limit,
-              usageRate,
+              // 与预算卡同口径保留 1 位小数（该卡 hideBar，数值仅供颜色分档）
+              usageRate: Math.round(usageRate * 10) / 10,
               resetAt: '',
               hideBar: true,
               currency: 'USD',

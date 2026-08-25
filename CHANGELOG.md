@@ -1,18 +1,27 @@
 # Changelog
-## [Unreleased]
+## [1.7.0] - 2026-08-25
 ### Added
 - 新增 Kimi（Kimi Coding）用量查询：`GET https://api.kimi.com/coding/v1/usages`（404 自动回退 `/usage`），鉴权为 Bearer `sk-kimi-` Key + `KimiCLI/1.6` User-Agent；周额度驱动托盘百分比与总览主指标，5h 窗口/月度限额（totalQuota 有值时）分组展示；解析按 2026-08-25 实测响应适配（数值为字符串、`TIME_UNIT_*` 枚举、detail 仅 remaining）并兼容参考项目 Golden0Voyager/kimi-code-usage 的 data[] 数组形态
 - Kimi 套餐档位徽标：`user.membership.level` 枚举映射为套餐名（Adagio 免费档 / Andante ¥49 / Moderato ¥99 / Allegretto ¥199 / Allegro ¥699 / Vivace 海外），映射按第三方实测锚定（枚举码在 Allegro/Vivace 上线时发生过位移）
 - Kimi 专属额度卡：大百分比数字 + HSL 渐变进度条 + "已用 X/Y 次" + 重置倒计时（分钟级自动刷新），卡片顺序 5h → 周 → 月
 - 新增 OpenRouter provider（整合自 slkiser/opencode-quota）：`GET https://openrouter.ai/api/v1/key`，设了月度预算显示预算百分比卡 + 消费金额，未设显示消费金额（后付费无上限）
 - 总览视图（看盘）改为每次打开面板默认显示，不再记住上次停留的服务商页
+- README 全面翻新：总览/Kimi 详情新截图、特色亮点、8 平台支持表
 
 ### Changed
 - 总览卡进度条改为 HSL 连续色阶渐变，与 QuotaCard 视觉统一
+- Kimi 总览主指标改为 5h 滚动窗口（重置最快、最先爆），周/月额度降为副卡；无 5h 数据时回退周额度
+- 调试辅助：`CQB_DEV=1 CQB_SHOW_POPUP=1`（+`CQB_TAB=n`）启动即显示弹窗并自动切标签，免托盘交互即可截图/调试
 
 ### Fixed
 - `periodHours` 此前未在共享 `QuotaItem` / `QuotaDisplayItem` 声明、data-transform 也未透传，导致渲染端爆仓时间估算（ZhipuSection 按 periodHours 反推周期起点）实际一直拿不到该字段；现已补齐类型链路并透传
 - Kimi 401 错误带 Key 类型提示（开放平台 `sk-` Key 无效，需 Kimi Coding 平台的 `sk-kimi-` Key）
+- 修复外链白名单缺少 Kimi / OpenRouter 域名：点击主面板这两个 provider 名称无法打开官网（被安全白名单静默拦截）
+- 修复 Kimi 解析对空字符串字段的误判：`Number('') === 0` 会把缺失的 `used`/`remaining` 字段当成数值 0，导致"已用=总量"误报爆仓
+- 导入配置的确认通道（confirm-import-config）增加 providers 结构防御性校验，异常数据不再直接写入配置文件
+- data-transform 移除 QuotaItem 字段的过时 `as any`（类型早已声明）并消除 history 数组的重复 map；OpenRouter 消费行 usageRate 统一保留 1 位小数口径
+- docs/provider-apis.md 修正与代码不符的退避策略描述（实为线性退避+抖动，非指数退避）与并发上限"UI 暂不展示"过时说明，补齐 OpenRouter 章节、复现命令与附录条目
+- 主进程对 stdout/stderr 的 EPIPE 静默容错：dev 终端先退出时残留日志写入不再抛未捕获异常弹窗
 
 ## [1.6.0] - 2026-08-18
 ### Added

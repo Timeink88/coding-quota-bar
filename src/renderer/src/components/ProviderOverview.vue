@@ -149,9 +149,12 @@ function selectPrimaryMetric(providerKey: string, account: AccountUsageData): Ov
   }
 
   if (providerKey === 'kimi') {
-    // 周额度是 Kimi Coding 的主限额；5h/月度走 secondary
-    const weekly = account.quotas.find(q => q.limitType === 'kimi')
-    return quotaMetric(weekly, t('quota.kimiWeekly'))
+    // 5h 滚动窗口是最该盯的——重置最快、最先爆；周/月额度走 secondary。
+    // 部分响应可能没有 limits[]（无 5h 行），此时回退周额度作主指标
+    const rolling5h = account.quotas.find(q => q.limitType === 'kimi-5h');
+    if (rolling5h) return quotaMetric(rolling5h, t('quota.kimi5h'));
+    const weekly = account.quotas.find(q => q.limitType === 'kimi');
+    return quotaMetric(weekly, t('quota.kimiWeekly'));
   }
 
   if (providerKey === 'openrouter') {
@@ -209,8 +212,9 @@ function selectSecondaryMetrics(providerKey: string, account: AccountUsageData):
   }
 
   if (providerKey === 'kimi') {
+    // 5h 已升为主指标，secondary 展示周额度（剩余）与月度限额
     return account.quotas
-      .filter(q => q.limitType !== 'kimi')
+      .filter(q => q.limitType !== 'kimi-5h')
       .slice(0, 2)
       .map(q => secondaryFromQuota(q))
   }
