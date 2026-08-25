@@ -1,39 +1,34 @@
 <template>
-  <div v-for="group in quotaGroups" :key="group.title" class="quota-row-single">
-    <ModelQuotaCard :title="group.title" :quotas="group.quotas" />
+  <div v-for="q in sortedQuotas" :key="q.limitType ?? q.label" class="quota-row-single">
+    <KimiQuotaCard
+      :label="q.label"
+      :label-params="q.labelParams"
+      :used="q.used"
+      :total="q.total"
+      :usage-rate="q.usageRate"
+      :reset-at="q.resetAt"
+      :color="q.color ?? 'green'"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useI18n } from 'vue-i18n'
-import ModelQuotaCard from './ModelQuotaCard.vue'
+import KimiQuotaCard from './KimiQuotaCard.vue'
 import type { AccountUsageData, QuotaItem } from '../types'
 
 const props = defineProps<{
   account: AccountUsageData
 }>()
 
-const { t } = useI18n()
-
-const quotaGroups = computed<{ title: string; quotas: QuotaItem[] }[]>(() => {
-  const groups: { title: string; quotas: QuotaItem[] }[] = []
-  // 周汇总行（limitType 'kimi'）排最前，其余按模型名（limitType）分组
-  const weekly = (props.account.quotas ?? []).filter(q => q.limitType === 'kimi')
-  if (weekly.length > 0) {
-    groups.push({ title: t('quota.kimiWeekly'), quotas: weekly })
-  }
-  for (const q of props.account.quotas ?? []) {
-    if (q.limitType === 'kimi') continue
-    const title = q.limitType || q.label
-    let group = groups.find(g => g.title === title)
-    if (!group) {
-      group = { title, quotas: [] }
-      groups.push(group)
-    }
-    group.quotas.push(q)
-  }
-  return groups
+const sortedQuotas = computed<QuotaItem[]>(() => {
+  // 顺序：5h 窗口 → 周额度 → 月额度 → 其他（与智谱/OpenCode 的短周期在前一致）
+  const order = ['kimi-5h', 'kimi', 'kimi-monthly']
+  return [...(props.account.quotas ?? [])].sort((a, b) => {
+    const ai = order.indexOf(a.limitType ?? '')
+    const bi = order.indexOf(b.limitType ?? '')
+    return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi)
+  })
 })
 </script>
 

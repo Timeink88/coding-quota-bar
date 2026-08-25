@@ -266,11 +266,26 @@ export function generateMockData(): Record<string, UsageResult> {
       used: 48,
       total: 100,
       expiresAt: new Date(now + 3 * DAY).toISOString(),
-      level: 'intermediate',
+      level: 'Allegretto',
       details: {
+        parallelLimit: 20,
         quotas: [
+          { label: 'quota.kimi5h', used: 12, total: 100, usageRate: 12, resetAt: new Date(now + 2 * HOUR).toISOString(), startAt: new Date(now - 3 * HOUR).toISOString(), periodHours: 5, limitType: 'kimi-5h', displayUnit: 'count' },
           { label: 'quota.kimiWeekly', used: 48, total: 100, usageRate: 48, resetAt: new Date(now + 3 * DAY).toISOString(), periodHours: 168, limitType: 'kimi', displayUnit: 'count' },
-          { label: '5h', used: 12, total: 100, usageRate: 12, resetAt: new Date(now + 2 * HOUR).toISOString(), periodHours: 5, limitType: '5h', displayUnit: 'count' },
+          { label: 'quota.kimiMonthly', used: 210, total: 400, usageRate: 52.5, resetAt: new Date(now + 12 * DAY).toISOString(), periodHours: 720, limitType: 'kimi-monthly', displayUnit: 'count' },
+        ],
+      },
+    },
+
+    openrouter: {
+      used: 12.5,
+      total: 50,
+      expiresAt: '',
+      details: {
+        currency: 'USD',
+        quotas: [
+          { label: 'quota.openrouterBudget', used: 12.5, total: 50, usageRate: 25, resetAt: '', currency: 'USD', limitType: 'openrouter-budget' },
+          { label: 'quota.openrouterSpend', labelParams: { amount: '$12.50 / $50.00' }, used: 12.5, total: 50, usageRate: 25, resetAt: '', hideBar: true, currency: 'USD', limitType: 'openrouter-spend' },
         ],
       },
     },

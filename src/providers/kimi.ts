@@ -38,6 +38,10 @@ interface KimiUsagesResponse {
     detail?: KimiUsageRow;
     window?: { duration?: number; timeUnit?: string };
   }>;
+  /** 月度总限额，结构与 usage 相同；无月度限额的套餐该字段为空对象 */
+  totalQuota?: KimiUsageRow;
+  /** 并发上限，如 "20" */
+  parallel?: { limit?: number | string };
   user?: {
     membership?: {
       level?: string;  // 如 "LEVEL_INTERMEDIATE"
@@ -45,16 +49,19 @@ interface KimiUsagesResponse {
   };
 }
 
+/** 行语义：周限额 / 滚动窗口限额（如 5h）/ 月度总限额 */
+type KimiRowKind = 'weekly' | 'window' | 'monthly';
+
 /** 归一化后的一行用量（仅含已解析的字段） */
 interface NormalizedRow {
-  name: string;
+  kind: KimiRowKind;
+  name: string;          // 窗口行的标签（'5h' / 'kimi-k2' 等），周/月行固定 'all'
   used: number;
   total: number;
   resetAt: string;
   periodHours?: number;
 }
 
-/** 数值字段容错：实测 API 可能返回字符串数字（"100"），统一转 number */
 function firstFinite(...values: Array<number | string | undefined>): number | undefined {
   for (const v of values) {
     if (v == null) continue;
@@ -66,8 +73,8 @@ function firstFinite(...values: Array<number | string | undefined>): number | un
 
 /**
  * 解析重置时间为 ISO 字符串
- * 支持三种来源：ISO 字符串（resetTime/reset_at/reset_time）、Unix 秒、
- * 相对秒数（reset_in/resetIn/ttl）
+ * 支持三种来源：ISO 字符串（resetTime/reset_at/reset_time，实测带微秒，Date 可直接解析）、
+ * Unix 秒、相对秒数（reset_in/resetIn/ttl）
  */
 function parseResetAt(row: KimiUsageRow): string {
   const iso = row.resetTime ?? row.resetAt ?? (typeof row.reset_time === 'string' ? row.reset_time : undefined);
@@ -88,7 +95,7 @@ function parseResetAt(row: KimiUsageRow): string {
 }
 
 /** 归一化一行用量：额度字段、已用字段、名称字段均做变体容错 */
-function normalizeRow(row: KimiUsageRow, fallbackName = ''): NormalizedRow | null {
+function normalizeRow(row: KimiUsageRow, fallbackName = ''): { name: string; used: number; total: number; resetAt: string } | null {
   const total = firstFinite(row.limit, row.limit_amount);
   if (total == null) return null;
 
@@ -106,7 +113,7 @@ function normalizeRow(row: KimiUsageRow, fallbackName = ''): NormalizedRow | nul
   };
 }
 
-/** 兼容对象形态：从 window.duration + timeUnit 推导窗口标签与小时数 */
+/** 兼容窗口形态：从 window.duration + timeUnit 推导窗口标签与小时数 */
 function windowLabel(duration?: number, timeUnit?: string): { name: string; periodHours?: number } {
   if (duration == null || !Number.isFinite(duration)) return { name: '' };
   // 实测枚举带 "TIME_UNIT_" 前缀（如 "TIME_UNIT_MINUTE"），剥掉后再匹配
@@ -121,36 +128,65 @@ function windowLabel(duration?: number, timeUnit?: string): { name: string; peri
 }
 
 /**
- * 解析响应为归一化行列表（数组形态优先，对象形态兜底）
+ * 解析响应为归一化行列表
+ * 对象形态（实测接口）：usage → 周行，totalQuota（有值时）→ 月行，limits[] → 窗口行
+ * 数组形态（参考项目文档形态）：model_name 'all' → 周行，其余 → 窗口行
  * （导出供单测/脚本验证解析逻辑）
  */
 export function parseUsagePayload(resp: KimiUsagesResponse): NormalizedRow[] {
+  const rows: NormalizedRow[] = [];
+
   if (Array.isArray(resp.data) && resp.data.length > 0) {
-    const rows = resp.data
-      .map(r => normalizeRow(r))
-      .filter((r): r is NormalizedRow => r != null);
-    if (rows.length > 0) {
-      const weekly = rows.find(r => r.name === 'all');
-      if (weekly && weekly.periodHours == null) weekly.periodHours = 168;
-      return rows;
+    for (const raw of resp.data) {
+      const row = normalizeRow(raw);
+      if (!row) continue;
+      const isWeekly = row.name === 'all';
+      rows.push({ ...row, kind: isWeekly ? 'weekly' : 'window', name: isWeekly ? 'all' : row.name, periodHours: isWeekly ? 168 : undefined });
     }
+    if (rows.length > 0) return rows;
   }
 
-  const rows: NormalizedRow[] = [];
   if (resp.usage) {
     const row = normalizeRow(resp.usage);
-    if (row) rows.push({ ...row, name: 'all', periodHours: 168 });
+    if (row) rows.push({ ...row, kind: 'weekly', name: 'all', periodHours: 168 });
+  }
+  if (resp.totalQuota) {
+    // 空对象 {} 或无 limit 的套餐没有月度限额，跳过（对齐 kimi-planbar 行为）
+    const total = firstFinite(resp.totalQuota.limit, resp.totalQuota.limit_amount);
+    if (total != null && total > 0) {
+      const row = normalizeRow(resp.totalQuota);
+      if (row) rows.push({ ...row, kind: 'monthly', name: 'all', periodHours: 24 * 30 });
+    }
   }
   if (Array.isArray(resp.limits)) {
     resp.limits.forEach((limit, i) => {
       if (!limit?.detail) return;
       const win = windowLabel(limit.window?.duration, limit.window?.timeUnit);
       const row = normalizeRow(limit.detail, win.name || `Limit ${i + 1}`);
-      if (row) rows.push({ ...row, periodHours: win.periodHours });
+      if (row) rows.push({ ...row, kind: 'window', periodHours: win.periodHours });
     });
   }
   return rows;
 }
+
+/**
+ * 套餐档位映射：membership.level 枚举 → Kimi Coding 套餐名
+ *
+ * 注意：Allegro/Vivace 上线时枚举码发生过位移（INTERMEDIATE 曾对应 Moderato），
+ * 下表按 2026-08 实测锚定（参考 larrygogo/meowo 的实测 + 多个第三方实现共识）：
+ *   LEVEL_FREE→Adagio(免费) / LEVEL_BASIC→Andante(CN ¥49 1×，国际区为 Moderato) /
+ *   LEVEL_STANDARD→Moderato(旧枚举) / LEVEL_INTERMEDIATE→Allegretto(¥199 20×) /
+ *   LEVEL_ADVANCED→Allegro(¥699 60×) / LEVEL_PREMIUM→Vivace(海外 $199 30×)
+ * 未命中映射时回退为剥前缀小写的枚举名
+ */
+const KIMI_LEVEL_NAMES: Record<string, string> = {
+  LEVEL_FREE: 'Adagio',
+  LEVEL_BASIC: 'Andante',
+  LEVEL_STANDARD: 'Moderato',
+  LEVEL_INTERMEDIATE: 'Allegretto',
+  LEVEL_ADVANCED: 'Allegro',
+  LEVEL_PREMIUM: 'Vivace',
+};
 
 /**
  * Kimi Coding Plan Provider
@@ -209,28 +245,52 @@ export class KimiProvider implements Provider {
     }
 
     const quotas: QuotaItem[] = rows.map(row => {
-      const isWeekly = row.name === 'all';
       const usageRate = row.total > 0
         ? Math.max(0, Math.min(100, (row.used / row.total) * 100))
         : 0;
+
+      // 滚动窗口行倒推周期起点 start = reset - period
+      const startAt = row.kind === 'window' && row.periodHours && row.resetAt
+        ? new Date(new Date(row.resetAt).getTime() - row.periodHours * 3600_000).toISOString()
+        : undefined;
+
+      let label: string;
+      let limitType: string;
+      switch (row.kind) {
+        case 'weekly':
+          label = 'quota.kimiWeekly'; limitType = 'kimi'; break;
+        case 'monthly':
+          label = 'quota.kimiMonthly'; limitType = 'kimi-monthly'; break;
+        default:
+          // 实测 5 小时滚动窗口（duration=300min）走专用文案；其他窗口用推导标签
+          if (row.periodHours === 5) { label = 'quota.kimi5h'; limitType = 'kimi-5h'; }
+          else { label = row.name; limitType = `kimi-${row.name}`; }
+      }
+
       return {
-        label: isWeekly ? 'quota.kimiWeekly' : row.name,
+        label,
         used: row.used,
         total: row.total,
         usageRate: Math.round(usageRate * 10) / 10,
         resetAt: row.resetAt,
-        periodHours: row.periodHours ?? (isWeekly ? 168 : undefined),
-        limitType: isWeekly ? 'kimi' : row.name,
-        displayUnit: 'count',
+        ...(startAt ? { startAt } : {}),
+        ...(row.periodHours != null ? { periodHours: row.periodHours } : {}),
+        limitType,
+        displayUnit: 'count' as const,
       };
     });
 
-    // 周汇总行（model_name === 'all'）作为 provider 级用量，驱动托盘百分比和总览
-    const weekly = rows.find(r => r.name === 'all') ?? rows[0];
+    // 周限额行作为 provider 级用量，驱动托盘百分比和总览
+    const weekly = rows.find(r => r.kind === 'weekly') ?? rows[0];
     const weeklyQuota = quotas[rows.indexOf(weekly)];
 
-    // 套餐等级：user.membership.level 如 "LEVEL_INTERMEDIATE" → "intermediate"
-    const level = parsed.user?.membership?.level?.replace(/^LEVEL_/, '').toLowerCase() || undefined;
+    // 套餐等级：user.membership.level 如 "LEVEL_INTERMEDIATE" → 档位名（见 KIMI_LEVEL_NAMES）
+    const rawLevel = parsed.user?.membership?.level;
+    const level = rawLevel
+      ? KIMI_LEVEL_NAMES[rawLevel] ?? rawLevel.replace(/^LEVEL_/, '').toLowerCase()
+      : undefined;
+
+    const parallelLimit = firstFinite(parsed.parallel?.limit);
 
     return {
       used: weeklyQuota.used,
@@ -239,6 +299,7 @@ export class KimiProvider implements Provider {
       level,
       details: {
         quotas,
+        ...(parallelLimit != null ? { parallelLimit } : {}),
       },
     };
   }

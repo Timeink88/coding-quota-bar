@@ -234,6 +234,12 @@
     "opencodeGoWeekly": "Weekly Quota",
     "opencodeGoMonthly": "Monthly Quota",
     "kimiWeekly": "Weekly Quota",
+    "kimi5h": "5-Hour Quota",
+    "kimiMonthly": "Monthly Quota",
+    "usedCount": "{used}/{total} used",
+    "openrouterBudget": "Monthly Budget",
+    "openrouterSpend": "Spent This Month",
+    "openrouterSpendUnlimited": "Spent This Month (No Limit)",
     "deepseekApikeyHintTitle": "API Key mode",
     "deepseekApikeyHintDesc": "Switch to web login to see monthly usage, cost, and per-model charts",
     "deepseekApikeyHintBtn": "Settings"
@@ -257,7 +263,8 @@
     "mimo": "MiMo",
     "codex": "Codex",
     "opencode-go": "OpenCode Go",
-    "kimi": "Kimi"
+    "kimi": "Kimi",
+    "openrouter": "OpenRouter"
   },
   "concurrencyTest": {
     "title": "Concurrency Test",

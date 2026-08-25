@@ -6,6 +6,7 @@ import { MiMoProvider } from '../providers/mimo';
 import { CodexProvider } from '../providers/codex';
 import { OpenCodeGoProvider } from '../providers/opencode-go';
 import { KimiProvider } from '../providers/kimi';
+import { OpenRouterProvider } from '../providers/openrouter';
 import buildConfig from '../../app.build';
 
 /**
@@ -19,6 +20,7 @@ const PROVIDER_CLASSES = {
   codex: CodexProvider,
   'opencode-go': OpenCodeGoProvider,
   kimi: KimiProvider,
+  openrouter: OpenRouterProvider,
 } as const;
 
 /**

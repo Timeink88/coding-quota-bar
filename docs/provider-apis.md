@@ -472,9 +472,21 @@ User-Agent: KimiCLI/1.6
 
 - **数值字段是字符串**（`"100"`），解析时统一 `Number()` 转换
 - `timeUnit` 为 `TIME_UNIT_MINUTE` 这类带前缀枚举，`duration: 300`（分钟）→ 5h 窗口
-- 顶层 `usage` 为周额度；`limits[].detail` 只有 `remaining` 没有 `used`，`used = limit - remaining`
-- `user.membership.level`（`LEVEL_INTERMEDIATE`）剥前缀小写后作 `UsageResult.level`，UI 显示等级徽标
+- 顶层 `usage` 为**周额度**；`limits[].detail` 只有 `remaining` 没有 `used`，`used = limit - remaining`
+- **`totalQuota` 为月度总限额**（结构与 usage 相同）；无月度限额的套餐返回空对象 `{}`，此时不渲染月度卡片（对齐 baigong-ai/kimi-planbar 的行为）
+- `parallel.limit` 为并发上限，存入 `details.parallelLimit`（UI 暂不展示）
+- `user.membership.level` 经 `KIMI_LEVEL_NAMES` 映射为套餐名，未命中回退剥前缀小写。映射表（2026-08 实测锚定，注意枚举码在 Allegro/Vivace 上线时发生过位移）：
+
+| 枚举 | 套餐 | 规格（CN） |
+|---|---|---|
+| `LEVEL_FREE` | Adagio | 免费档 |
+| `LEVEL_BASIC` | Andante（国际区为 Moderato） | ¥49/月，1× |
+| `LEVEL_STANDARD` | Moderato（旧枚举） | ¥99/月，4× |
+| `LEVEL_INTERMEDIATE` | Allegretto | ¥199/月，20× |
+| `LEVEL_ADVANCED` | Allegro | ¥699/月，60× |
+| `LEVEL_PREMIUM` | Vivace | 海外 $199/mo，30× |
 - `resetTime` 带微秒（7 位小数），`new Date()` 可直接解析
+- 接口**不校验 User-Agent**（kimi-planbar 不带 KimiCLI UA 也能调通），保留 UA 伪装仅为贴近官方客户端
 
 **数组形态（参考项目文档形态，一并兼容）**：
 
@@ -503,7 +515,7 @@ User-Agent: KimiCLI/1.6
 
 ### 5.4 单位与展示
 
-额度单位是**次数**（prompt 数），全部 `displayUnit: 'count'`。UI 复用 `ModelQuotaCard`：周额度一张卡，5h 窗口/分模型限额各一张卡（按 `limitType` 分组）。总览页主指标取周额度，其余做 secondary；等级徽标来自 `user.membership.level`。
+额度单位是**次数**（prompt 数）。UI 用 KimiQuotaCard（QuotaCard 变体）：**大百分比数字**（limit=100 时百分比即已用次数）+ HSL 渐变进度条 + "已用 X/Y 次" + **重置倒计时**（"X小时X分后重置"）。卡片顺序 5h → 周 → 月；总览页主指标取周额度，5h/月度做 secondary；等级徽标来自 `user.membership.level` 映射的套餐名。
 
 ---
 
@@ -705,7 +717,8 @@ Invoke-RestMethod -Uri 'https://api.kimi.com/coding/v1/usages' -Headers $headers
 | `src/providers/deepseek.ts` | DeepSeek 余额/明细/服务状态 |
 | `src/main/deepseek-auth.ts` | DeepSeek webToken 提取/刷新/登出 |
 | `src/providers/opencode-go.ts` | OpenCode Go 三窗口 |
-| `src/providers/kimi.ts` | Kimi Coding 周额度 + 分模型限额 |
+| `src/providers/kimi.ts` | Kimi Coding 周额度 + 5h/月度限额 |
+| `src/providers/openrouter.ts` | OpenRouter API 消费预算（整合自 slkiser/opencode-quota） |
 | `src/main/http.ts` | `HttpClientWithRetry` 通用 HTTP 客户端 |
 | `src/providers/index.ts` | 各 provider 的 re-export |
 | `src/main/loader.ts` | provider class 注册表 |

@@ -25,7 +25,7 @@
           <span class="metric-detail">{{ card.primary.detail }}</span>
         </div>
         <div v-if="!card.primary.hideBar" class="overview-bar">
-          <div class="overview-fill" :class="card.primary.color" :style="{ width: `${card.primary.usageRate}%` }"></div>
+          <div class="overview-fill" :style="hslBarStyle(card.primary.usageRate)"></div>
         </div>
         <div v-if="card.secondary.length > 0" class="secondary-list">
           <span v-for="item in card.secondary" :key="item.label" class="secondary-chip">
@@ -149,9 +149,26 @@ function selectPrimaryMetric(providerKey: string, account: AccountUsageData): Ov
   }
 
   if (providerKey === 'kimi') {
-    // 周额度是 Kimi Coding 的主限额；分模型限额走 secondary
+    // 周额度是 Kimi Coding 的主限额；5h/月度走 secondary
     const weekly = account.quotas.find(q => q.limitType === 'kimi')
     return quotaMetric(weekly, t('quota.kimiWeekly'))
+  }
+
+  if (providerKey === 'openrouter') {
+    // 设了月度预算用预算卡；未设则显示消费金额文本
+    const budget = account.quotas.find(q => q.limitType === 'openrouter-budget')
+    if (budget) return quotaMetric(budget, t('quota.openrouterBudget'))
+    const spend = account.quotas.find(q => q.limitType === 'openrouter-spend')
+    if (spend) {
+      return {
+        label: t(spend.label, spend.labelParams),
+        value: String(spend.labelParams?.amount ?? '$0'),
+        detail: t('quota.unlimited'),
+        usageRate: 0,
+        color: 'neutral',
+        hideBar: true,
+      }
+    }
   }
 
   return quotaMetric(findTightestQuota(account.quotas), t('overview.primaryQuota'))
@@ -345,6 +362,20 @@ function currencySymbol(currency?: string): string {
 
 function clampPercent(n: number): number {
   return Math.max(0, Math.min(100, Number.isFinite(n) ? n : 0))
+}
+
+/**
+ * HSL 渐变进度条（与 QuotaCard 同视觉）：0% 绿 → 50% 黄 → 100% 红 连续色阶
+ */
+function hslBarStyle(usageRate: number): Record<string, string> {
+  const rate = clampPercent(usageRate)
+  const hue = 142 - (rate / 100) * 142
+  const sat = 70
+  const light = 60 - (rate / 100) * 5
+  return {
+    width: `${rate}%`,
+    background: `linear-gradient(90deg, hsl(${hue}, ${sat}%, ${light + 8}%), hsl(${hue}, ${sat}%, ${light}%))`,
+  }
 }
 </script>
 

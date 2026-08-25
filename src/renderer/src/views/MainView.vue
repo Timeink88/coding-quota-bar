@@ -151,6 +151,7 @@
               <CodexSection v-else-if="activeProvider.key === 'codex'" :account="getActiveAccount(activeProvider)!" />
               <OpenCodeGoSection v-else-if="activeProvider.key === 'opencode-go'" :account="getActiveAccount(activeProvider)!" />
               <KimiSection v-else-if="activeProvider.key === 'kimi'" :account="getActiveAccount(activeProvider)!" />
+              <OpenRouterSection v-else-if="activeProvider.key === 'openrouter'" :account="getActiveAccount(activeProvider)!" />
               <DeepSeekServiceStatus v-if="activeProvider.key === 'deepseek' && !getActiveAccount(activeProvider)!.error" :account="getActiveAccount(activeProvider)!" />
             </template>
           </template>
@@ -195,6 +196,7 @@ import MiMoSection from '../components/MiMoSection.vue'
 import OpenCodeGoSection from '../components/OpenCodeGoSection.vue'
 import CodexSection from '../components/CodexSection.vue'
 import KimiSection from '../components/KimiSection.vue'
+import OpenRouterSection from '../components/OpenRouterSection.vue'
 import type { ProviderUsageData, AccountUsageData, UsageState, WindowPinMode } from '../types'
 import { useTheme } from '../composables/useTheme'
 
@@ -224,9 +226,11 @@ function onTabsAreaLeave() {
 }
 
 // Provider Tab 状态
+// 不持久化 active-provider：每次打开面板默认回到总览看盘（用户主视图），
+// 会话内切换标签照常记忆。同时清掉历史版本遗留的持久化值。
 const OVERVIEW_KEY = '__overview'
 const STORAGE_KEY_ACCOUNTS = 'active-accounts'
-const STORAGE_KEY_PROVIDER = 'active-provider'
+const LEGACY_STORAGE_KEY_PROVIDER = 'active-provider'
 const activeAccounts = ref<Record<string, string>>({})
 const activeProviderKey = ref('')
 
@@ -238,19 +242,12 @@ function restoreActiveAccounts() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY_ACCOUNTS)
     if (saved) activeAccounts.value = JSON.parse(saved)
-  } catch {}
-}
-
-function restoreActiveProvider() {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY_PROVIDER)
-    if (saved) activeProviderKey.value = saved
+    localStorage.removeItem(LEGACY_STORAGE_KEY_PROVIDER)
   } catch {}
 }
 
 function setActiveProvider(key: string) {
   activeProviderKey.value = key
-  try { localStorage.setItem(STORAGE_KEY_PROVIDER, key) } catch {}
 }
 
 const activeProvider = computed(() => {
@@ -320,7 +317,6 @@ function applyState(state: UsageState) {
   lastUpdate.value = state.lastUpdate
   initialLoading.value = false
   restoreActiveAccounts()
-  restoreActiveProvider()
 }
 
 async function fetchData() {

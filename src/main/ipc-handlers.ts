@@ -13,6 +13,7 @@ import { MiniMaxProvider } from '../providers/minimax';
 import { CodexProvider } from '../providers/codex';
 import { OpenCodeGoProvider } from '../providers/opencode-go';
 import { KimiProvider } from '../providers/kimi';
+import { OpenRouterProvider } from '../providers/openrouter';
 import { getAvailableProviderKeys } from './loader';
 import { buildUsageData } from './data-transform';
 import { isSafeExternalUrl } from './utils/security';
@@ -30,6 +31,7 @@ const PROVIDER_CLASSES: Record<string, new () => Provider> = {
   codex: CodexProvider,
   'opencode-go': OpenCodeGoProvider,
   kimi: KimiProvider,
+  openrouter: OpenRouterProvider,
 };
 import {
   showPopupWindow,

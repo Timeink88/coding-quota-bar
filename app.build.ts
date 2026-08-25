@@ -12,5 +12,6 @@ export default {
     { key: 'codex', available: true, envVar: '', baseUrl: 'https://chatgpt.com', websiteUrl: 'https://chatgpt.com/' },
     { key: 'opencode-go', available: true, envVar: 'OPENCODE_API_KEY', baseUrl: 'https://opencode.ai', websiteUrl: 'https://opencode.ai/auth' },
     { key: 'kimi', available: true, envVar: 'KIMI_CODING_API_KEY', baseUrl: 'https://api.kimi.com/coding/v1', websiteUrl: 'https://www.kimi.com/coding/' },
+    { key: 'openrouter', available: true, envVar: 'OPENROUTER_API_KEY', baseUrl: 'https://openrouter.ai', websiteUrl: 'https://openrouter.ai/keys' },
   ],
 } as const;

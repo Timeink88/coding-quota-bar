@@ -234,6 +234,12 @@
     "opencodeGoWeekly": "周额度",
     "opencodeGoMonthly": "月额度",
     "kimiWeekly": "周额度",
+    "kimi5h": "5小时额度",
+    "kimiMonthly": "月额度",
+    "usedCount": "已用 {used}/{total} 次",
+    "openrouterBudget": "月度预算",
+    "openrouterSpend": "本月消费",
+    "openrouterSpendUnlimited": "本月消费（无上限）",
     "deepseekApikeyHintTitle": "当前为 API Key 模式",
     "deepseekApikeyHintDesc": "切换到网页登录可查看本月用量、费用及分模型图表",
     "deepseekApikeyHintBtn": "去设置"
@@ -257,7 +263,8 @@
     "mimo": "MiMo",
     "codex": "Codex",
     "opencode-go": "OpenCode Go",
-    "kimi": "Kimi"
+    "kimi": "Kimi",
+    "openrouter": "OpenRouter"
   },
   "concurrencyTest": {
     "title": "并发测试",
