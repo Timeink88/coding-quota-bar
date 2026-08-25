@@ -233,6 +233,7 @@
     "opencodeGo5h": "5小时额度",
     "opencodeGoWeekly": "周额度",
     "opencodeGoMonthly": "月额度",
+    "kimiWeekly": "周额度",
     "deepseekApikeyHintTitle": "当前为 API Key 模式",
     "deepseekApikeyHintDesc": "切换到网页登录可查看本月用量、费用及分模型图表",
     "deepseekApikeyHintBtn": "去设置"
@@ -255,7 +256,8 @@
     "deepseek": "DeepSeek",
     "mimo": "MiMo",
     "codex": "Codex",
-    "opencode-go": "OpenCode Go"
+    "opencode-go": "OpenCode Go",
+    "kimi": "Kimi"
   },
   "concurrencyTest": {
     "title": "并发测试",

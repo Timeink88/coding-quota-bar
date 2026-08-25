@@ -45,6 +45,7 @@ export interface QuotaItem {
   usageRate: number;     // 使用率 0-100
   resetAt: string;       // 重置时间 ISO 8601
   startAt?: string;      // 周期开始时间 ISO 8601
+  periodHours?: number;  // 周期长度（小时），渲染端用于估算消耗速率/爆仓时间
   limitType?: string;    // 限制类型标识，如 "tokens"、"mcp"
   hideBar?: boolean;     // 为 true 时不显示进度条，仅显示文本
   displayUnit?: 'percent' | 'count'; // 显示单位：百分比或次数

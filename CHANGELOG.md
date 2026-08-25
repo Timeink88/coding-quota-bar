@@ -1,4 +1,12 @@
 # Changelog
+## [Unreleased]
+### Added
+- 新增 Kimi（Kimi Coding）用量查询：`GET https://api.kimi.com/coding/v1/usages`（404 自动回退 `/usage`），鉴权为 Bearer `sk-kimi-` Key + `KimiCLI/1.6` User-Agent；周额度驱动托盘百分比与总览主指标，分模型限额按 limitType 分组展示；解析逻辑对齐 Golden0Voyager/kimi-code-usage（camelCase/snake_case 字段容错 + 对象形态兜底）
+- Kimi 401 错误带 Key 类型提示（开放平台 `sk-` Key 无效，需 Kimi Coding 平台的 `sk-kimi-` Key）
+
+### Fixed
+- `periodHours` 此前未在共享 `QuotaItem` / `QuotaDisplayItem` 声明、data-transform 也未透传，导致渲染端爆仓时间估算（ZhipuSection 按 periodHours 反推周期起点）实际一直拿不到该字段；现已补齐类型链路并透传
+
 ## [1.6.0] - 2026-08-18
 ### Added
 - 智谱 GLM-5.3 定价条目（暂沿用 GLM-5.2 官方价）+ 兜底模型升级到 GLM-5.2

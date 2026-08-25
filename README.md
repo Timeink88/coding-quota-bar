@@ -32,6 +32,7 @@ Windows 托盘工具，实时监控各 AI 平台 Coding Plan 用量。
 | **MiniMax** | API Key | 日额度、周额度 |
 | **MiMo** | 网页登录 | 套餐总用量、月度用量、Token 用量、账户余额 |
 | **OpenCode Go** | API Key | 5 小时/周/月三档剩余额度 |
+| **Kimi** | API Key（sk-kimi-） | 周额度、分模型限额 |
 | **Codex** | 读取本机 Codex CLI 登录 | 主窗口/次窗口限流、代码审查额度、Credits 余额、订阅到期 |
 
 ### 多账户管理

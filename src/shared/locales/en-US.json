@@ -233,6 +233,7 @@
     "opencodeGo5h": "5-Hour Quota",
     "opencodeGoWeekly": "Weekly Quota",
     "opencodeGoMonthly": "Monthly Quota",
+    "kimiWeekly": "Weekly Quota",
     "deepseekApikeyHintTitle": "API Key mode",
     "deepseekApikeyHintDesc": "Switch to web login to see monthly usage, cost, and per-model charts",
     "deepseekApikeyHintBtn": "Settings"
@@ -255,7 +256,8 @@
     "deepseek": "DeepSeek",
     "mimo": "MiMo",
     "codex": "Codex",
-    "opencode-go": "OpenCode Go"
+    "opencode-go": "OpenCode Go",
+    "kimi": "Kimi"
   },
   "concurrencyTest": {
     "title": "Concurrency Test",

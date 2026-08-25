@@ -148,6 +148,12 @@ function selectPrimaryMetric(providerKey: string, account: AccountUsageData): Ov
     return quotaMetric(rolling, t('quota.opencodeGo5h'))
   }
 
+  if (providerKey === 'kimi') {
+    // 周额度是 Kimi Coding 的主限额；分模型限额走 secondary
+    const weekly = account.quotas.find(q => q.limitType === 'kimi')
+    return quotaMetric(weekly, t('quota.kimiWeekly'))
+  }
+
   return quotaMetric(findTightestQuota(account.quotas), t('overview.primaryQuota'))
 }
 
@@ -182,6 +188,13 @@ function selectSecondaryMetrics(providerKey: string, account: AccountUsageData):
   if (providerKey === 'opencode-go') {
     return account.quotas
       .filter(q => q.limitType === 'weekly' || q.limitType === 'monthly')
+      .map(q => secondaryFromQuota(q))
+  }
+
+  if (providerKey === 'kimi') {
+    return account.quotas
+      .filter(q => q.limitType !== 'kimi')
+      .slice(0, 2)
       .map(q => secondaryFromQuota(q))
   }
 

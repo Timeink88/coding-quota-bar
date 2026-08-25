@@ -7,4 +7,5 @@ export { DeepSeekProvider } from './deepseek';
 export { MiMoProvider } from './mimo';
 export { CodexProvider } from './codex';
 export { OpenCodeGoProvider } from './opencode-go';
+export { KimiProvider } from './kimi';
 export type { Provider, ProviderConfig, UsageResult } from './base';

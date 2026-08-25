@@ -16,6 +16,7 @@ export interface QuotaDisplayItem {
   usageRate: number;
   resetAt: string;
   startAt?: string;
+  periodHours?: number;
   color: 'green' | 'yellow' | 'red';
   limitType?: string;
   hideBar?: boolean;
@@ -165,6 +166,7 @@ function convertAccountData(
     usageRate: q.usageRate,
     resetAt: q.resetAt,
     startAt: (q as any).startAt,
+    periodHours: q.periodHours,
     color: getColorByPercent(Math.max(0, 100 - q.usageRate), thresholds) as 'green' | 'yellow' | 'red',
     limitType: q.limitType,
     hideBar: (q as any).hideBar,

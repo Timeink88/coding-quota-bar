@@ -12,6 +12,7 @@ import { ZhipuProvider } from '../providers/zhipu';
 import { MiniMaxProvider } from '../providers/minimax';
 import { CodexProvider } from '../providers/codex';
 import { OpenCodeGoProvider } from '../providers/opencode-go';
+import { KimiProvider } from '../providers/kimi';
 import { getAvailableProviderKeys } from './loader';
 import { buildUsageData } from './data-transform';
 import { isSafeExternalUrl } from './utils/security';
@@ -28,6 +29,7 @@ const PROVIDER_CLASSES: Record<string, new () => Provider> = {
   mimo: MiMoProvider,
   codex: CodexProvider,
   'opencode-go': OpenCodeGoProvider,
+  kimi: KimiProvider,
 };
 import {
   showPopupWindow,
