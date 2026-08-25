@@ -263,14 +263,14 @@ export function generateMockData(): Record<string, UsageResult> {
     },
 
     kimi: {
-      used: 120,
-      total: 300,
+      used: 48,
+      total: 100,
       expiresAt: new Date(now + 3 * DAY).toISOString(),
+      level: 'intermediate',
       details: {
         quotas: [
-          { label: 'quota.kimiWeekly', used: 120, total: 300, usageRate: 40, resetAt: new Date(now + 3 * DAY).toISOString(), periodHours: 168, limitType: 'kimi', displayUnit: 'count' },
-          { label: 'kimi-k2', used: 30, total: 100, usageRate: 30, resetAt: new Date(now + 3 * DAY).toISOString(), limitType: 'kimi-k2', displayUnit: 'count' },
-          { label: 'kimi-k2-thinking', used: 90, total: 200, usageRate: 45, resetAt: new Date(now + 3 * DAY).toISOString(), limitType: 'kimi-k2-thinking', displayUnit: 'count' },
+          { label: 'quota.kimiWeekly', used: 48, total: 100, usageRate: 48, resetAt: new Date(now + 3 * DAY).toISOString(), periodHours: 168, limitType: 'kimi', displayUnit: 'count' },
+          { label: '5h', used: 12, total: 100, usageRate: 12, resetAt: new Date(now + 2 * HOUR).toISOString(), periodHours: 5, limitType: '5h', displayUnit: 'count' },
         ],
       },
     },

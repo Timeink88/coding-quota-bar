@@ -1,7 +1,8 @@
 # Changelog
 ## [Unreleased]
 ### Added
-- 新增 Kimi（Kimi Coding）用量查询：`GET https://api.kimi.com/coding/v1/usages`（404 自动回退 `/usage`），鉴权为 Bearer `sk-kimi-` Key + `KimiCLI/1.6` User-Agent；周额度驱动托盘百分比与总览主指标，分模型限额按 limitType 分组展示；解析逻辑对齐 Golden0Voyager/kimi-code-usage（camelCase/snake_case 字段容错 + 对象形态兜底）
+- 新增 Kimi（Kimi Coding）用量查询：`GET https://api.kimi.com/coding/v1/usages`（404 自动回退 `/usage`），鉴权为 Bearer `sk-kimi-` Key + `KimiCLI/1.6` User-Agent；周额度驱动托盘百分比与总览主指标，5h 窗口/分模型限额按 limitType 分组展示；解析按 2026-08-25 实测响应适配（数值为字符串、`TIME_UNIT_*` 枚举、detail 仅 remaining）并兼容参考项目 Golden0Voyager/kimi-code-usage 的 data[] 数组形态
+- Kimi 套餐等级徽标：`user.membership.level`（如 LEVEL_INTERMEDIATE → intermediate）
 - Kimi 401 错误带 Key 类型提示（开放平台 `sk-` Key 无效，需 Kimi Coding 平台的 `sk-kimi-` Key）
 
 ### Fixed

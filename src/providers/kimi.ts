@@ -4,22 +4,23 @@ import { HttpClientWithRetry } from '../main/http';
 /**
  * Kimi Coding Plan 用量 API 响应类型
  *
- * 参考 Golden0Voyager/kimi-code-usage 的解析逻辑：
- * - 数组形态（真实接口）：data[] 里 model_name === "all" 为周汇总行，
- *   其余行为分模型限额；
- * - 对象形态（防御性兜底）：usage 为总用量，limits[] 为各窗口限额
- *   （detail 携带名称和额度，window 携带窗口时长）。
- * 字段名存在 camelCase / snake_case 变体，逐字段容错。
+ * 实测（2026-08-25，api.kimi.com）顶层 usage 对象为周额度、limits[] 为
+ * 各窗口限额；参考项目 Golden0Voyager/kimi-code-usage 文档中的 data[] 数组
+ * 形态也一并兼容。注意实测字段特点：
+ * - 数值字段可能是字符串（"100"）而非数字；
+ * - timeUnit 为 "TIME_UNIT_MINUTE" 这类带前缀的枚举；
+ * - limit 行的 detail 只有 remaining 没有 used；
+ * - 字段名存在 camelCase / snake_case 变体，逐字段容错。
  */
 interface KimiUsageRow {
   model_name?: string;
   name?: string;
   title?: string;
-  limit?: number;
-  limit_amount?: number;
-  used?: number;
-  used_amount?: number;
-  remaining?: number;
+  limit?: number | string;
+  limit_amount?: number | string;
+  used?: number | string;
+  used_amount?: number | string;
+  remaining?: number | string;
   percentage?: number;
   resetTime?: string;
   resetAt?: string;
@@ -37,6 +38,11 @@ interface KimiUsagesResponse {
     detail?: KimiUsageRow;
     window?: { duration?: number; timeUnit?: string };
   }>;
+  user?: {
+    membership?: {
+      level?: string;  // 如 "LEVEL_INTERMEDIATE"
+    };
+  };
 }
 
 /** 归一化后的一行用量（仅含已解析的字段） */
@@ -48,9 +54,12 @@ interface NormalizedRow {
   periodHours?: number;
 }
 
-function firstFinite(...values: Array<number | undefined>): number | undefined {
+/** 数值字段容错：实测 API 可能返回字符串数字（"100"），统一转 number */
+function firstFinite(...values: Array<number | string | undefined>): number | undefined {
   for (const v of values) {
-    if (v != null && Number.isFinite(v)) return v;
+    if (v == null) continue;
+    const n = typeof v === 'number' ? v : Number(v);
+    if (Number.isFinite(n)) return n;
   }
   return undefined;
 }
@@ -100,7 +109,8 @@ function normalizeRow(row: KimiUsageRow, fallbackName = ''): NormalizedRow | nul
 /** 兼容对象形态：从 window.duration + timeUnit 推导窗口标签与小时数 */
 function windowLabel(duration?: number, timeUnit?: string): { name: string; periodHours?: number } {
   if (duration == null || !Number.isFinite(duration)) return { name: '' };
-  const unit = (timeUnit || '').toUpperCase();
+  // 实测枚举带 "TIME_UNIT_" 前缀（如 "TIME_UNIT_MINUTE"），剥掉后再匹配
+  const unit = (timeUnit || '').toUpperCase().replace(/^TIME_UNIT_/, '');
   if (unit === 'HOUR' || unit === 'MINUTE') {
     const hours = unit === 'MINUTE' ? duration / 60 : duration;
     return { name: `${Number.isInteger(hours) ? hours : hours.toFixed(1)}h`, periodHours: hours };
@@ -219,10 +229,14 @@ export class KimiProvider implements Provider {
     const weekly = rows.find(r => r.name === 'all') ?? rows[0];
     const weeklyQuota = quotas[rows.indexOf(weekly)];
 
+    // 套餐等级：user.membership.level 如 "LEVEL_INTERMEDIATE" → "intermediate"
+    const level = parsed.user?.membership?.level?.replace(/^LEVEL_/, '').toLowerCase() || undefined;
+
     return {
       used: weeklyQuota.used,
       total: weeklyQuota.total,
       expiresAt: weekly.resetAt,
+      level,
       details: {
         quotas,
       },

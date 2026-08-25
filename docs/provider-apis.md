@@ -446,30 +446,43 @@ User-Agent: KimiCLI/1.6
 
 **必须使用 Kimi Coding 平台的 `sk-kimi-` 开头 Key**。Moonshot 开放平台（`sk-` 开头）的 Key 调此端点返回 401 `{"code":"unauthenticated"}`。Provider 对 401 抛出带此提示的错误。
 
-### 5.3 响应结构（两种形态，逐字段容错）
+### 5.3 响应结构（实测 2026-08-25，逐字段容错）
 
-**数组形态（真实接口）**：
+**对象形态（真实接口，2026-08-25 实测抓包）**：
+
+```json
+{
+  "user":  { "membership": { "level": "LEVEL_INTERMEDIATE" } },
+  "usage": { "limit": "100", "used": "48", "remaining": "52",
+             "resetTime": "2026-08-28T10:21:26.724424Z" },
+  "limits": [
+    { "window": { "duration": 300, "timeUnit": "TIME_UNIT_MINUTE" },
+      "detail": { "limit": "100", "remaining": "100",
+                  "resetTime": "2026-08-25T16:21:26.724424Z" } }
+  ],
+  "parallel": { "limit": "20" },
+  "totalQuota": {},
+  "authentication": { "method": "METHOD_API_KEY", "scope": "FEATURE_CODING" },
+  "subType": "TYPE_PURCHASE",
+  "domain": "DOMAIN_NEXUS"
+}
+```
+
+实测要点：
+
+- **数值字段是字符串**（`"100"`），解析时统一 `Number()` 转换
+- `timeUnit` 为 `TIME_UNIT_MINUTE` 这类带前缀枚举，`duration: 300`（分钟）→ 5h 窗口
+- 顶层 `usage` 为周额度；`limits[].detail` 只有 `remaining` 没有 `used`，`used = limit - remaining`
+- `user.membership.level`（`LEVEL_INTERMEDIATE`）剥前缀小写后作 `UsageResult.level`，UI 显示等级徽标
+- `resetTime` 带微秒（7 位小数），`new Date()` 可直接解析
+
+**数组形态（参考项目文档形态，一并兼容）**：
 
 ```json
 {
   "data": [
     { "model_name": "all", "limit": 1000, "used": 400 },
     { "model_name": "kimi-k2", "limit": 100, "used": 30, "resetTime": "2026-08-25T12:00:00Z" }
-  ]
-}
-```
-
-- `model_name === "all"` → 周汇总行（周额度），映射为 `QuotaItem { label: 'quota.kimiWeekly', limitType: 'kimi' }`，并作为 provider 级 `used/total` 驱动托盘百分比
-- 其余行 → 分模型限额，`limitType` = 模型名（渲染端按它分组）
-
-**对象形态（防御性兜底）**：
-
-```json
-{
-  "usage":  { "limit": 1000, "used": 500, "reset_in": 3600 },
-  "limits": [
-    { "detail": { "name": "5h", "limit": 100, "used": 30 },
-      "window": { "duration": 5, "timeUnit": "HOUR" } }
   ]
 }
 ```
@@ -483,11 +496,14 @@ User-Agent: KimiCLI/1.6
 | 名称 | `model_name` / `name` / `title` |
 | 重置 | `resetTime` / `resetAt` / `reset_at` / `reset_time`（ISO 或 Unix 秒）/ `reset_in` / `resetIn` / `ttl`（相对秒） |
 
-窗口标签由 `window.duration + timeUnit` 推导（`5h` / `3d` / `1mo`）。
+映射规则：
+
+- 周汇总行（对象形态顶层 `usage` / 数组形态 `model_name === "all"`）→ `QuotaItem { label: 'quota.kimiWeekly', limitType: 'kimi' }`，并作为 provider 级 `used/total` 驱动托盘百分比
+- `limits[]` 各窗口 / 数组形态其余行 → 窗口标签由 `window.duration + timeUnit` 推导（`5h` / `3d` / `1mo`），`limitType` = 标签（渲染端按它分组）
 
 ### 5.4 单位与展示
 
-额度单位是**次数**（prompt 数），全部 `displayUnit: 'count'`。UI 复用 `ModelQuotaCard`：周额度一张卡，分模型限额各一张卡（按 `limitType` 分组）。总览页主指标取周额度，分模型限额做 secondary。
+额度单位是**次数**（prompt 数），全部 `displayUnit: 'count'`。UI 复用 `ModelQuotaCard`：周额度一张卡，5h 窗口/分模型限额各一张卡（按 `limitType` 分组）。总览页主指标取周额度，其余做 secondary；等级徽标来自 `user.membership.level`。
 
 ---
 
